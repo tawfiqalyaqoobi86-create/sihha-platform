@@ -43,6 +43,31 @@ def list_results(objective_id: str):
 def create_result(payload: ResultRequest):
     try:
         data = payload.model_dump(exclude_none=True)
+
+        if payload.objective_id:
+            objective = (
+                supabase.table("objectives")
+                .select("id,health_plan_id")
+                .eq("id", payload.objective_id)
+                .limit(1)
+                .execute()
+            )
+            if not objective.data:
+                raise HTTPException(status_code=400, detail="الهدف التفصيلي غير موجود")
+
+            if payload.activity_id:
+                activity = (
+                    supabase.table("activities")
+                    .select("id,health_plan_id,objective_id")
+                    .eq("id", payload.activity_id)
+                    .limit(1)
+                    .execute()
+                )
+                if not activity.data:
+                    raise HTTPException(status_code=400, detail="النشاط المرتبط بالنتيجة غير موجود")
+                if activity.data[0]["health_plan_id"] != objective.data[0]["health_plan_id"]:
+                    raise HTTPException(status_code=400, detail="النشاط والهدف لا ينتميان إلى الخطة نفسها")
+
         r = supabase.table("results").insert(data).execute()
         if not r.data:
             raise RuntimeError("تعذر حفظ النتيجة")

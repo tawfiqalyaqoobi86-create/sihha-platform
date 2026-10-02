@@ -746,48 +746,136 @@ export default function Home() {
                       {objectives.map((o,i)=><div key={o.id} className="rounded-xl bg-slate-50 p-3 text-sm"><b>{i+1}. {o.title}</b></div>)}
                     </div>
                   </div>
-                  <div className="rounded-2xl border p-4">
-                    <h4 className="mb-3 font-extrabold">الأنشطة التنفيذية</h4>
-                    <div className="grid gap-2">
-                      <input value={activityTitle} onChange={e=>setActivityTitle(e.target.value)} placeholder="اسم النشاط" className="rounded-xl border px-3 py-2" />
-                      <input value={activityResponsible} onChange={e=>setActivityResponsible(e.target.value)} placeholder="المسؤول عن التنفيذ" className="rounded-xl border px-3 py-2" />
-                      <div className="grid grid-cols-2 gap-2">
-                        <input type="date" value={activityStart} onChange={e=>setActivityStart(e.target.value)} className="rounded-xl border px-3 py-2" />
-                        <input type="date" value={activityEnd} onChange={e=>setActivityEnd(e.target.value)} className="rounded-xl border px-3 py-2" />
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <div className="mb-4 flex items-center justify-between gap-3">
+                      <div>
+                        <h4 className="font-extrabold text-slate-800">الأنشطة التنفيذية</h4>
+                        <p className="mt-1 text-xs text-slate-500">كل نشاط محفوظ يظهر كبطاقة مستقلة لسهولة القراءة والمتابعة.</p>
                       </div>
-                      <button onClick={createActivity} className="rounded-xl bg-blue-600 px-4 py-2 font-bold text-white">إضافة النشاط</button>
+                      <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">{activities.length} نشاط</span>
                     </div>
-                    <div className="mt-3 space-y-2">
+
+                    <div className="mb-4 rounded-2xl border border-blue-100 bg-blue-50/50 p-4">
+                      <div className="mb-3 flex items-center gap-2 font-bold text-blue-900">
+                        <Plus size={17} />
+                        إضافة نشاط جديد
+                      </div>
+                      <div className="grid gap-2">
+                        <input
+                          value={activityTitle}
+                          onChange={e=>setActivityTitle(e.target.value)}
+                          placeholder="اسم النشاط"
+                          className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 outline-none focus:border-blue-500"
+                        />
+                        <input
+                          value={activityResponsible}
+                          onChange={e=>setActivityResponsible(e.target.value)}
+                          placeholder="المسؤول عن التنفيذ"
+                          className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 outline-none focus:border-blue-500"
+                        />
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                          <input type="date" value={activityStart} onChange={e=>setActivityStart(e.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5" />
+                          <input type="date" value={activityEnd} onChange={e=>setActivityEnd(e.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5" />
+                        </div>
+                        <button onClick={createActivity} className="rounded-xl bg-blue-600 px-4 py-2.5 font-bold text-white shadow-sm hover:bg-blue-700">
+                          إضافة النشاط
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      {activities.length === 0 && (
+                        <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-500">
+                          لم تتم إضافة أنشطة تنفيذية بعد.
+                        </div>
+                      )}
+
                       {activities.map(a=>{
-                      const evidence = activityEvidence[a.id] || [];
-                      const formatDate = (value: string | null | undefined) => value ? new Date(value + "T00:00:00").toLocaleDateString("ar-OM") : "غير محدد";
-                      return <div key={a.id} className="rounded-xl bg-slate-50 p-3 text-sm">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <b className="text-base">{a.title}</b>
-                            <div className="mt-1 text-xs text-slate-500">
-                              المسؤول: {a.responsible_person || "غير محدد"} • الإنجاز: {a.completion_percentage ?? 0}%
+                        const evidence = activityEvidence[a.id] || [];
+                        const linkedComponents = activityComponents[a.id] || [];
+                        const formatDate = (value: string | null | undefined) =>
+                          value ? new Date(value + "T00:00:00").toLocaleDateString("ar-OM") : "غير محدد";
+
+                        return (
+                          <div key={a.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                            <div className="border-b border-slate-100 bg-gradient-to-l from-blue-50 to-white p-4">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                  <div className="mb-1 text-xs font-bold text-blue-600">نشاط تنفيذي</div>
+                                  <h5 className="text-lg font-extrabold text-slate-800">{a.title}</h5>
+                                </div>
+                                <div className="shrink-0 rounded-xl bg-white px-3 py-2 text-center shadow-sm">
+                                  <div className="text-lg font-extrabold text-blue-700">{a.completion_percentage ?? 0}%</div>
+                                  <div className="text-[10px] font-bold text-slate-400">الإنجاز</div>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="grid gap-3 p-4 sm:grid-cols-2">
+                              <div className="rounded-xl bg-slate-50 p-3">
+                                <div className="text-[11px] font-bold text-slate-400">المسؤول عن التنفيذ</div>
+                                <div className="mt-1 font-bold text-slate-700">{a.responsible_person || "غير محدد"}</div>
+                              </div>
+                              <div className="rounded-xl bg-slate-50 p-3">
+                                <div className="text-[11px] font-bold text-slate-400">فترة التنفيذ</div>
+                                <div className="mt-1 font-bold text-slate-700">
+                                  {formatDate(a.start_date)} <span className="mx-1 text-blue-500">←</span> {formatDate(a.end_date)}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="border-t border-slate-100 px-4 py-3">
+                              <div className="mb-2 text-xs font-extrabold text-slate-600">المجالات المرتبطة</div>
+                              <div className="flex flex-wrap gap-2">
+                                {components.map(c=>{
+                                  const active = linkedComponents.includes(c.id);
+                                  return (
+                                    <button
+                                      key={c.id}
+                                      type="button"
+                                      onClick={()=>{
+                                        const ids = new Set(linkedComponents);
+                                        active ? ids.delete(c.id) : ids.add(c.id);
+                                        linkActivityComponents(a.id,[...ids]);
+                                      }}
+                                      className={`rounded-full border px-3 py-1.5 text-xs font-bold transition ${active ? "border-blue-200 bg-blue-600 text-white" : "border-slate-200 bg-white text-slate-400 hover:border-blue-200 hover:text-blue-700"}`}
+                                    >
+                                      {active ? "✓ " : ""}{c.name}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+
+                            <div className="border-t border-slate-100 bg-slate-50/70 px-4 py-3">
+                              <div className="mb-2 flex items-center justify-between gap-3">
+                                <div className="text-xs font-extrabold text-slate-700">📎 الأدلة والشواهد</div>
+                                <button
+                                  onClick={()=>loadActivityEvidence(a.id)}
+                                  className="rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-blue-700 shadow-sm ring-1 ring-slate-200 hover:bg-blue-50"
+                                >
+                                  تحديث الأدلة
+                                </button>
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                {evidence.length
+                                  ? evidence.map(ev=>(
+                                      <span key={ev.id} className="rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 ring-1 ring-emerald-100">
+                                        ✓ {ev.title}
+                                      </span>
+                                    ))
+                                  : <span className="text-xs text-slate-400">لم يتم اختيار أدلة بعد</span>}
+                              </div>
+                            </div>
+
+                            <div className="border-t border-slate-100 px-4 py-3 text-left">
+                              <button type="button" className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-500">
+                                تعديل النشاط
+                              </button>
                             </div>
                           </div>
-                          <div className="shrink-0 rounded-lg bg-white px-3 py-2 text-xs font-bold text-slate-600">
-                            {formatDate(a.start_date)} → {formatDate(a.end_date)}
-                          </div>
-                        </div>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {components.map(c=><label key={c.id} className="flex items-center gap-1 text-xs">
-                            <input type="checkbox" checked={(activityComponents[a.id]||[]).includes(c.id)} onChange={e=>{
-                              const ids=new Set(activityComponents[a.id]||[]);
-                              e.target.checked?ids.add(c.id):ids.delete(c.id);
-                              linkActivityComponents(a.id,[...ids]);
-                            }}/>{c.name}
-                          </label>)}
-                        </div>
-                        <button onClick={()=>loadActivityEvidence(a.id)} className="mt-2 text-xs font-bold text-blue-700">الأدلة المختارة</button>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {evidence.length ? evidence.map(ev=><span key={ev.id} className="rounded-lg bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-700">✓ {ev.title}</span>) : <span className="text-xs text-slate-400">لم يتم اختيار أدلة بعد</span>}
-                        </div>
-                      </div>
-                    })}
+                        );
+                      })}
                     </div>
                   </div>
                 </div>

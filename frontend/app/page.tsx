@@ -1028,14 +1028,130 @@ export default function Home() {
           )}
 
           {showCompetition && competition && (
-            <div className="mb-4 rounded-2xl border-2 border-blue-200 bg-gradient-to-l from-blue-50 to-white p-5 shadow-sm">
-              <div className="mb-4"><h3 className="text-xl font-extrabold text-[#102a56]">وضع المسابقة</h3><p className="text-xs text-slate-500">ملف مختصر يبرز جاهزية المدرسة وإنجازاتها وشواهدها.</p></div>
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-                {[["التقييم",(competition.evaluation?.percentage??0)+"%"],["المشكلات",competition.problems?.length??0],["الخطط",competition.plans?.length??0],["الابتكارات",competition.innovations?.length??0],["التوأمة",competition.twinning?.length??0]].map(([l,v])=><div key={String(l)} className="rounded-xl bg-white p-4 text-center shadow-sm"><b className="text-xl text-blue-700">{v}</b><div className="text-xs text-slate-500">{l}</div></div>)}
+            <div className="mb-4 rounded-2xl border-2 border-blue-200 bg-gradient-to-l from-blue-50 via-white to-emerald-50 p-5 shadow-sm">
+              <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-xl font-extrabold text-[#102a56]">وضع المسابقة</h3>
+                  <p className="mt-1 text-xs text-slate-500">لوحة جاهزية ملف المدرسة: التقييم، الشواهد، الخطط، التنفيذ، الابتكار والشراكات.</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button onClick={loadCompetition} className="rounded-xl border bg-white px-4 py-2 text-xs font-bold text-slate-700">تحديث البيانات</button>
+                  <button onClick={() => { setShowAI(true); loadAI(); }} className="rounded-xl bg-violet-600 px-4 py-2 text-xs font-bold text-white">تحليل الجاهزية بالذكاء الاصطناعي</button>
+                </div>
               </div>
+
+              <div className="rounded-2xl border-2 border-blue-200 bg-white p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <div className="text-xs font-bold text-slate-500">مؤشر جاهزية الملف <span className="font-normal">(داخلي للمنصة)</span></div>
+                    <div className="mt-1 text-3xl font-extrabold text-blue-700">${competition.metrics?.overall_readiness ?? 0}%</div>
+                  </div>
+                  <div className="min-w-[220px] flex-1">
+                    <div className="mb-1 flex justify-between text-xs font-bold text-slate-500">
+                      <span>اكتمال الملف</span>
+                      <span>${competition.metrics?.overall_readiness ?? 0}%</span>
+                    </div>
+                    <div className="h-3 overflow-hidden rounded-full bg-slate-100">
+                      <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: ${Math.min(Number(competition.metrics?.overall_readiness ?? 0), 100) + "%" }} />
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-3 rounded-xl bg-slate-50 p-3 text-xs leading-6 text-slate-600">
+                  الدرجة الرسمية للتقييم منفصلة عن مؤشر الجاهزية. هذا المؤشر يوضح مدى اكتمال الملف الموثق في المنصة.
+                </div>
+              </div>
+
+              <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {[
+                  ["اكتمال التقييم", ${competition.metrics?.evaluation_completion ?? 0, (${competition.evaluation?.completed_items ?? 0) + " / " + (${competition.evaluation?.total_items ?? 0) + " بند"],
+                  ["تغطية الشواهد", ${competition.metrics?.evidence_coverage ?? 0, (${competition.counts?.evidence ?? 0) + " شاهد موثق"],
+                  ["اكتمال الخطط", ${competition.metrics?.plan_completion ?? 0, (${competition.counts?.plans ?? 0) + " خطة"],
+                  ["تنفيذ الأنشطة", ${competition.metrics?.execution ?? 0, (${competition.counts?.activities ?? 0) + " نشاط"],
+                  ["توثيق الأنشطة", ${competition.metrics?.activity_documentation ?? 0, "أنشطة مرتبطة بشواهد"],
+                  ["الابتكار والشراكة", ${competition.metrics?.innovation_partnership ?? 0, (${competition.counts?.innovations ?? 0) + " ابتكار • " + ((${competition.counts?.partnerships ?? 0) + (${competition.counts?.twinning ?? 0)) + " شراكة/توأمة"],
+                ].map(([label, value, note]) => (
+                  <div key={String(label)} className="rounded-2xl border bg-white p-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-extrabold text-slate-700">{label}</span>
+                      <span className="text-lg font-extrabold text-blue-700">{value}%</span>
+                    </div>
+                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
+                      <div className="h-full rounded-full bg-blue-500" style={{ width: String(Math.min(Number(value ?? 0), 100)) + "%" }} />
+                    </div>
+                    <div className="mt-2 text-[11px] text-slate-500">{note}</div>
+                  </div>
+                ))}
+              </div>
+
               <div className="mt-4 grid gap-3 md:grid-cols-2">
-                <div className="rounded-xl border bg-white p-4"><b>أبرز الخطط</b>{(competition.plans??[]).slice(0,5).map((p:any)=><div key={p.id} className="mt-2 text-sm">✓ {p.title}</div>)}</div>
-                <div className="rounded-xl border bg-white p-4"><b>بنك الابتكار</b>{(competition.innovations??[]).slice(0,5).map((i:any)=><div key={i.id} className="mt-2 text-sm">✓ {i.title} — {i.status}</div>)}</div>
+                <div className="rounded-2xl border bg-white p-4">
+                  <div className="mb-3 flex items-center justify-between">
+                    <b>الصورة التشغيلية</b>
+                    <span className="rounded-full bg-amber-50 px-3 py-1 text-[11px] font-bold text-amber-700">${competition.counts?.problems ?? 0} مشكلة</span>
+                  </div>
+                  <div className="space-y-2 text-sm">
+                    {(competition.problems ?? []).slice(0, 5).map((p:any) => (
+                      <div key={p.id} className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2">
+                        <span className="font-bold">{p.title}</span>
+                        <span className="text-xs text-slate-500">{p.priority_level === "high" ? "أولوية عالية" : p.priority_level === "low" ? "أولوية منخفضة" : "أولوية متوسطة"}</span>
+                      </div>
+                    ))}
+                    {!competition.problems?.length && <div className="py-4 text-center text-xs text-slate-400">لا توجد مشكلات مسجلة بعد.</div>}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border bg-white p-4">
+                  <div className="mb-3 flex items-center justify-between">
+                    <b>أبرز الخطط</b>
+                    <span className="rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-bold text-emerald-700">${competition.counts?.plans ?? 0} خطة</span>
+                  </div>
+                  <div className="space-y-2 text-sm">
+                    {(competition.plans ?? []).slice(0, 5).map((p:any) => (
+                      <div key={p.id} className="rounded-xl bg-slate-50 px-3 py-2">
+                        <div className="font-bold">{p.title}</div>
+                        <div className="mt-1 text-xs text-slate-500">الحالة: {p.status}</div>
+                      </div>
+                    ))}
+                    {!competition.plans?.length && <div className="py-4 text-center text-xs text-slate-400">لا توجد خطط مسجلة بعد.</div>}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 rounded-2xl border bg-white p-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <b>الابتكار والشراكة المجتمعية</b>
+                  <span className="rounded-full bg-violet-50 px-3 py-1 text-[11px] font-bold text-violet-700">${competition.counts?.innovations ?? 0} + ${competition.counts?.partnerships ?? 0} + ${competition.counts?.twinning ?? 0} سجل</span>
+                </div>
+                <div className="grid gap-2 md:grid-cols-2">
+                  {(competition.innovations ?? []).slice(0, 4).map((i:any) => (
+                    <div key={i.id} className="rounded-xl bg-violet-50/60 px-3 py-2">
+                      <div className="font-bold">{i.title}</div>
+                      <div className="text-xs text-slate-500">ابتكار صحي</div>
+                    </div>
+                  ))}
+                  {(competition.partnerships ?? []).slice(0, 4).map((p:any) => (
+                    <div key={p.id} className="rounded-xl bg-emerald-50 px-3 py-2">
+                      <div className="font-bold">{p.partners?.name ?? "شراكة مجتمعية"}</div>
+                      <div className="text-xs text-slate-500">{p.objective || "هدف الشراكة غير مدخل"}</div>
+                    </div>
+                  ))}
+                  {(competition.twinning ?? []).slice(0, 4).map((t:any) => (
+                    <div key={t.id} className="rounded-xl bg-blue-50 px-3 py-2">
+                      <div className="font-bold">{t.partner_school_name}</div>
+                      <div className="text-xs text-slate-500">{t.objective || "هدف التوأمة غير مدخل"}</div>
+                    </div>
+                  ))}
+                  {!competition.innovations?.length && !competition.partnerships?.length && !competition.twinning?.length && (
+                    <div className="md:col-span-2 py-4 text-center text-xs text-slate-400">لا توجد ابتكارات أو شراكات موثقة بعد.</div>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-4 rounded-2xl border border-blue-100 bg-blue-50/60 p-4">
+                <div className="mb-2 font-extrabold text-[#102a56]">ملاحظات القراءة</div>
+                {(competition.notes ?? []).map((note:string, index:number) => (
+                  <div key={index} className="mt-1 text-xs leading-6 text-slate-600">• {note}</div>
+                ))}
               </div>
             </div>
           )}

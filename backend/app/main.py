@@ -8,6 +8,7 @@ from backend.app.api.academic_years import router as academic_years_router
 from backend.app.api.components import router as components_router
 from backend.app.api.evaluations import router as evaluations_router
 from backend.app.api.evidence import router as evidence_router
+from backend.app.api.health_problems import router as health_problems_router
 
 app = FastAPI(
     title="صِحّة",
@@ -28,6 +29,7 @@ app.include_router(academic_years_router)
 app.include_router(components_router)
 app.include_router(evaluations_router)
 app.include_router(evidence_router)
+app.include_router(health_problems_router)
 
 @app.get("/")
 def root():

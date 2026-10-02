@@ -79,6 +79,36 @@ def create_problem(payload: ProblemRequest):
         raise HTTPException(status_code=500, detail=f"حدث خطأ أثناء حفظ المشكلة: {str(e)}")
 
 
+@router.delete("/{problem_id}")
+def delete_problem(problem_id: str):
+    try:
+        existing = (
+            supabase.table("health_problems")
+            .select("id,school_id,title")
+            .eq("id", problem_id)
+            .limit(1)
+            .execute()
+        )
+        if not existing.data:
+            raise HTTPException(status_code=404, detail="المشكلة الصحية غير موجودة")
+
+        supabase.table("problem_priorities").delete().eq("problem_id", problem_id).execute()
+        row = supabase.table("health_problems").delete().eq("id", problem_id).execute()
+
+        audit(
+            "delete",
+            "health_problem",
+            problem_id,
+            existing.data[0].get("school_id"),
+            details={"title": existing.data[0].get("title")},
+        )
+        return {"success": True, "data": row.data[0] if row.data else None}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"حدث خطأ أثناء حذف المشكلة: {str(e)}")
+
+
 @router.post("/priority")
 def set_priority(payload: PriorityRequest):
     try:

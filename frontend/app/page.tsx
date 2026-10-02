@@ -87,7 +87,9 @@ export default function Home() {
   const [activityResponsible, setActivityResponsible] = useState("");
   const [activityStart, setActivityStart] = useState("");
   const [activityEnd, setActivityEnd] = useState("");
+  const [activityObjectiveId, setActivityObjectiveId] = useState("");
   const [activityComponents, setActivityComponents] = useState<Record<string,string[]>>({});
+  const [openActivityComponents, setOpenActivityComponents] = useState<string | null>(null);
   const [activityEvidence, setActivityEvidence] = useState<Record<string,any[]>>({});
   const [showDashboard, setShowDashboard] = useState(false);
   const [dashboard, setDashboard] = useState({ problems: 0, plans: 0, objectives: 0, activities: 0, evidence: 0, score: 0, percentage: 0, components: [] as any[] });
@@ -178,11 +180,18 @@ export default function Home() {
   const overallMax = totalMax || 341;
 
   async function linkActivityComponents(activityId: string, componentIds: string[]) {
-    await fetch(`${API}/api/health-plans/activities/${activityId}/components`, {
-      method:"POST", headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({component_ids:componentIds})
-    });
-    setActivityComponents(v=>({...v,[activityId]:componentIds}));
+    setError("");
+    try {
+      const r = await fetch(`${API}/api/health-plans/activities/${activityId}/components`, {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({component_ids:componentIds})
+      });
+      const json = await r.json().catch(()=>({}));
+      if (!r.ok) throw new Error(json.detail || "تعذر حفظ المجالات المرتبطة");
+      setActivityComponents(v=>({...v,[activityId]:componentIds}));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "تعذر حفظ المجالات المرتبطة");
+    }
   }
 
   async function loadActivityEvidence(activityId: string) {
@@ -246,6 +255,7 @@ export default function Home() {
         headers: {"Content-Type":"application/json"},
         body: JSON.stringify({
           health_plan_id:selectedPlanId,
+          objective_id:activityObjectiveId || null,
           title:activityTitle,
           responsible_person:activityResponsible || null,
           start_date:activityStart || null,
@@ -263,6 +273,7 @@ export default function Home() {
       setActivityResponsible("");
       setActivityStart("");
       setActivityEnd("");
+      setActivityObjectiveId("");
       await loadPlanDetails(selectedPlanId);
       setSaveMessage("تم إضافة النشاط بنجاح");
       setTimeout(() => setSaveMessage(""), 2500);
@@ -735,154 +746,203 @@ export default function Home() {
                 ))}
               </div>
               {selectedPlanId && (
-                <div className="mt-5 grid gap-5">
-                  <div className="rounded-2xl border p-4">
-                    <h4 className="mb-3 font-extrabold">الأهداف التفصيلية</h4>
+                <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <h4 className="font-extrabold text-slate-800">الخطة التنفيذية</h4>
+                      <p className="mt-1 text-xs text-slate-500">يظهر كل نشاط في صف واحد مرتبطًا بالهدف والمنفذين والتاريخ والمجالات والشواهد.</p>
+                    </div>
+                    <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">{activities.length} نشاط</span>
+                  </div>
+
+                  <div className="mb-4 rounded-2xl border border-blue-100 bg-blue-50/50 p-4">
+                    <div className="mb-3 flex items-center gap-2 font-bold text-blue-900">
+                      <Plus size={17} />
+                      إضافة نشاط جديد
+                    </div>
+                    <div className="grid gap-2 lg:grid-cols-[1.2fr_1.1fr_1fr_1fr_115px]">
+                      <select
+                        value={activityObjectiveId}
+                        onChange={e=>setActivityObjectiveId(e.target.value)}
+                        className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 outline-none focus:border-blue-500"
+                      >
+                        <option value="">الهدف التفصيلي</option>
+                        {objectives.map((o:any)=><option key={o.id} value={o.id}>{o.title}</option>)}
+                      </select>
+                      <input
+                        value={activityTitle}
+                        onChange={e=>setActivityTitle(e.target.value)}
+                        placeholder="اسم النشاط"
+                        className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 outline-none focus:border-blue-500"
+                      />
+                      <input
+                        value={activityResponsible}
+                        onChange={e=>setActivityResponsible(e.target.value)}
+                        placeholder="المنفذون"
+                        className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 outline-none focus:border-blue-500"
+                      />
+                      <div className="grid grid-cols-2 gap-2">
+                        <input type="date" aria-label="تاريخ التنفيذ" title="تاريخ التنفيذ" value={activityStart} onChange={e=>setActivityStart(e.target.value)} className="min-w-0 rounded-xl border border-slate-200 bg-white px-2 py-2.5" />
+                        <input type="date" aria-label="تاريخ الانتهاء" title="تاريخ الانتهاء" value={activityEnd} onChange={e=>setActivityEnd(e.target.value)} className="min-w-0 rounded-xl border border-slate-200 bg-white px-2 py-2.5" />
+                      </div>
+                      <button onClick={createActivity} className="rounded-xl bg-blue-600 px-4 py-2.5 font-bold text-white shadow-sm hover:bg-blue-700">
+                        إضافة
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <div>
+                        <h5 className="font-extrabold text-slate-800">الأهداف التفصيلية</h5>
+                        <p className="mt-1 text-xs text-slate-500">أضف الأهداف هنا، ثم اربط كل نشاط بالهدف المناسب.</p>
+                      </div>
+                      <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600 ring-1 ring-slate-200">{objectives.length} هدف</span>
+                    </div>
                     <div className="flex gap-2">
-                      <input value={objectiveTitle} onChange={e=>setObjectiveTitle(e.target.value)} placeholder="الهدف التفصيلي" className="min-w-0 flex-1 rounded-xl border px-3 py-2" />
+                      <input value={objectiveTitle} onChange={e=>setObjectiveTitle(e.target.value)} placeholder="الهدف التفصيلي" className="min-w-0 flex-1 rounded-xl border bg-white px-3 py-2" />
                       <button onClick={createObjective} className="rounded-xl bg-emerald-600 px-4 font-bold text-white">إضافة</button>
                     </div>
-                    <div className="mt-3 space-y-2">
-                      {objectives.map((o,i)=><div key={o.id} className="rounded-xl bg-slate-50 p-3 text-sm"><b>{i+1}. {o.title}</b></div>)}
-                    </div>
                   </div>
-                  <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                    <div className="mb-4 flex items-center justify-between gap-3">
-                      <div>
-                        <h4 className="font-extrabold text-slate-800">الأنشطة التنفيذية</h4>
-                        <p className="mt-1 text-xs text-slate-500">كل نشاط محفوظ يظهر كبطاقة مستقلة لسهولة القراءة والمتابعة.</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">{activities.length} نشاط</span>
-                        {selectedPlanId && (
-                          <button
-                            type="button"
-                            onClick={()=>loadPlanDetails(selectedPlanId)}
-                            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50"
-                          >
-                            تحديث
-                          </button>
-                        )}
-                      </div>
-                    </div>
 
-                    <div className="mb-4 rounded-2xl border border-blue-100 bg-blue-50/50 p-4">
-                      <div className="mb-3 flex items-center gap-2 font-bold text-blue-900">
-                        <Plus size={17} />
-                        إضافة نشاط جديد
-                      </div>
-                      <div className="grid gap-2">
-                        <input
-                          value={activityTitle}
-                          onChange={e=>setActivityTitle(e.target.value)}
-                          placeholder="اسم النشاط"
-                          className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 outline-none focus:border-blue-500"
-                        />
-                        <input
-                          value={activityResponsible}
-                          onChange={e=>setActivityResponsible(e.target.value)}
-                          placeholder="المسؤول عن التنفيذ"
-                          className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 outline-none focus:border-blue-500"
-                        />
-                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                          <input type="date" value={activityStart} onChange={e=>setActivityStart(e.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5" />
-                          <input type="date" value={activityEnd} onChange={e=>setActivityEnd(e.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5" />
-                        </div>
-                        <button onClick={createActivity} className="rounded-xl bg-blue-600 px-4 py-2.5 font-bold text-white shadow-sm hover:bg-blue-700">
-                          إضافة النشاط
-                        </button>
-                      </div>
-                    </div>
+                  <div className="overflow-x-auto rounded-2xl border border-slate-200">
+                    <table className="w-full min-w-[1180px] border-collapse text-right">
+                      <thead className="bg-slate-100">
+                        <tr className="text-xs font-extrabold text-slate-700">
+                          <th className="border-b px-3 py-3">الأهداف التفصيلية</th>
+                          <th className="border-b px-3 py-3">الأنشطة</th>
+                          <th className="border-b px-3 py-3">المنفذون</th>
+                          <th className="border-b px-3 py-3">تاريخ التنفيذ</th>
+                          <th className="border-b px-3 py-3">المجالات المرتبطة</th>
+                          <th className="border-b px-3 py-3">الأدلة المختارة</th>
+                          <th className="border-b px-3 py-3 text-center">الإنجاز</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 bg-white">
+                        {activities.length === 0 ? (
+                          <tr>
+                            <td colSpan={7} className="px-5 py-10 text-center text-sm text-slate-500">
+                              لا توجد أنشطة محفوظة لهذه الخطة.
+                            </td>
+                          </tr>
+                        ) : activities.map((a:any) => {
+                          const evidence = activityEvidence[a.id] || [];
+                          const linkedComponents = activityComponents[a.id] || [];
+                          const objective = objectives.find((o:any)=>o.id === a.objective_id);
+                          const formatDate = (value: string | null | undefined) =>
+                            value ? new Date(value + "T00:00:00").toLocaleDateString("ar-OM") : "غير محدد";
 
-                    <div className="space-y-3">
-                      {activities.length === 0 && (
-                        <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-500">
-                          {selectedPlanId ? "لا توجد أنشطة محفوظة لهذه الخطة. إذا كنت قد أضفت نشاطًا للتو، اضغط «تحديث» لإعادة تحميله." : "لم تتم إضافة أنشطة تنفيذية بعد."}
-                        </div>
-                      )}
-
-                      {activities.map(a=>{
-                        const evidence = activityEvidence[a.id] || [];
-                        const linkedComponents = activityComponents[a.id] || [];
-                        const formatDate = (value: string | null | undefined) =>
-                          value ? new Date(value + "T00:00:00").toLocaleDateString("ar-OM") : "غير محدد";
-
-                        return (
-                          <div key={a.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                            <div className="border-b border-slate-100 bg-gradient-to-l from-blue-50 to-white p-4">
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="min-w-0">
-                                  <div className="mb-1 text-xs font-bold text-blue-600">نشاط تنفيذي</div>
-                                  <h5 className="text-lg font-extrabold text-slate-800">{a.title}</h5>
+                          return (
+                            <tr key={a.id} className="align-top hover:bg-slate-50/70">
+                              <td className="px-3 py-4">
+                                <div className="min-w-[180px] font-bold leading-6 text-slate-800">{objective?.title || "غير مرتبط بهدف"}</div>
+                              </td>
+                              <td className="px-3 py-4">
+                                <div className="min-w-[160px] font-extrabold text-blue-700">{a.title}</div>
+                              </td>
+                              <td className="px-3 py-4">
+                                <div className="min-w-[130px] font-bold text-slate-700">{a.responsible_person || "غير محدد"}</div>
+                              </td>
+                              <td className="px-3 py-4">
+                                <div className="min-w-[150px] text-sm font-bold text-slate-700">
+                                  {formatDate(a.start_date)}
+                                  <span className="mx-1 text-blue-500">→</span>
+                                  {formatDate(a.end_date)}
                                 </div>
-                                <div className="shrink-0 rounded-xl bg-white px-3 py-2 text-center shadow-sm">
-                                  <div className="text-lg font-extrabold text-blue-700">{a.completion_percentage ?? 0}%</div>
-                                  <div className="text-[10px] font-bold text-slate-400">الإنجاز</div>
+                              </td>
+                              <td className="relative px-3 py-4">
+                                <div className="min-w-[250px]">
+                                  <button
+                                    type="button"
+                                    onClick={()=>setOpenActivityComponents(v=>v===a.id ? null : a.id)}
+                                    className="flex w-full items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-right text-sm font-bold text-slate-700 hover:border-blue-300 hover:bg-blue-50"
+                                  >
+                                    <span className={linkedComponents.length ? "text-blue-700" : "text-slate-400"}>
+                                      {linkedComponents.length
+                                        ? `${linkedComponents.length} مجال محدد`
+                                        : "اختر المجالات المرتبطة"}
+                                    </span>
+                                    <span className="text-slate-400">▼</span>
+                                  </button>
+                                  {openActivityComponents === a.id && (
+                                    <div className="absolute right-3 top-[calc(100%-4px)] z-30 w-[320px] max-w-[calc(100vw-40px)] rounded-2xl border border-slate-200 bg-white p-3 shadow-xl">
+                                      <div className="mb-2 text-xs font-extrabold text-slate-600">اختر مجالًا أو أكثر</div>
+                                      <div className="max-h-64 space-y-1 overflow-y-auto">
+                                        {components.map(c=>{
+                                          const active = linkedComponents.includes(c.id);
+                                          return (
+                                            <label key={c.id} className="flex cursor-pointer items-start gap-2 rounded-xl px-2 py-2 text-xs font-bold text-slate-700 hover:bg-blue-50">
+                                              <input
+                                                type="checkbox"
+                                                checked={active}
+                                                onChange={()=>{
+                                                  const ids = new Set(linkedComponents);
+                                                  active ? ids.delete(c.id) : ids.add(c.id);
+                                                  linkActivityComponents(a.id,[...ids]);
+                                                }}
+                                                className="mt-0.5 h-4 w-4 accent-blue-600"
+                                              />
+                                              <span>{c.name}</span>
+                                            </label>
+                                          );
+                                        })}
+                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={()=>setOpenActivityComponents(null)}
+                                        className="mt-2 w-full rounded-xl bg-slate-100 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-200"
+                                      >
+                                        تم
+                                      </button>
+                                    </div>
+                                  )}
                                 </div>
-                              </div>
-                            </div>
-
-                            <div className="grid gap-3 p-4 sm:grid-cols-2">
-                              <div className="rounded-xl bg-slate-50 p-3">
-                                <div className="text-[11px] font-bold text-slate-400">المسؤول عن التنفيذ</div>
-                                <div className="mt-1 font-bold text-slate-700">{a.responsible_person || "غير محدد"}</div>
-                              </div>
-                              <div className="rounded-xl bg-slate-50 p-3">
-                                <div className="text-[11px] font-bold text-slate-400">فترة التنفيذ</div>
-                                <div className="mt-1 font-bold text-slate-700">
-                                  {formatDate(a.start_date)} <span className="mx-1 text-blue-500">→</span> {formatDate(a.end_date)}
+                                <div className="mt-2 flex flex-wrap gap-1.5">
+                                  {linkedComponents.map((id:string)=>{
+                                    const c = components.find(x=>x.id===id);
+                                    return c ? <span key={id} className="rounded-full bg-blue-50 px-2 py-1 text-[10px] font-bold text-blue-700">{c.name}</span> : null;
+                                  })}
                                 </div>
-                              </div>
-                            </div>
-
-                            <div className="border-t border-slate-100 px-4 py-3">
-                              <div className="mb-2 text-xs font-extrabold text-slate-600">المجالات المرتبطة</div>
-                              <div className="flex flex-wrap gap-2">
-                                {components.map(c=>{
-                                  const active = linkedComponents.includes(c.id);
-                                  return (
-                                    <button
-                                      key={c.id}
-                                      type="button"
-                                      onClick={()=>{
-                                        const ids = new Set(linkedComponents);
-                                        active ? ids.delete(c.id) : ids.add(c.id);
-                                        linkActivityComponents(a.id,[...ids]);
-                                      }}
-                                      className={`rounded-full border px-3 py-1.5 text-xs font-bold transition ${active ? "border-blue-200 bg-blue-600 text-white" : "border-slate-200 bg-white text-slate-400 hover:border-blue-200 hover:text-blue-700"}`}
-                                    >
-                                      {active ? "✓ " : ""}{c.name}
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            </div>
-
-                            <div className="border-t border-slate-100 bg-slate-50/70 px-4 py-3">
-                              <div className="mb-2 flex items-center justify-between gap-3">
-                                <div className="text-xs font-extrabold text-slate-700">📎 الأدلة والشواهد</div>
-                                <button
-                                  onClick={()=>loadActivityEvidence(a.id)}
-                                  className="rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-blue-700 shadow-sm ring-1 ring-slate-200 hover:bg-blue-50"
-                                >
-                                  تحديث الأدلة
-                                </button>
-                              </div>
-                              <div className="flex flex-wrap gap-2">
-                                {evidence.length
-                                  ? evidence.map(ev=>(
-                                      <span key={ev.id} className="rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 ring-1 ring-emerald-100">
+                              </td>
+                              <td className="px-3 py-4">
+                                <div className="min-w-[160px]">
+                                  <button
+                                    type="button"
+                                    onClick={()=>loadActivityEvidence(a.id)}
+                                    className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 hover:bg-emerald-100"
+                                  >
+                                    {evidence.length ? `✓ ${evidence.length} شاهد مختار` : "اختيار الأدلة"}
+                                  </button>
+                                  <div className="mt-2 space-y-1.5">
+                                    {evidence.length ? evidence.map((ev:any)=>(
+                                      <div key={ev.id} className="truncate rounded-lg bg-slate-50 px-2 py-1.5 text-[10px] font-bold text-slate-600" title={ev.title}>
                                         ✓ {ev.title}
-                                      </span>
-                                    ))
-                                  : <span className="text-xs text-slate-400">لم يتم اختيار أدلة بعد</span>}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                                      </div>
+                                    )) : <div className="text-[10px] text-slate-400">لا توجد أدلة مرتبطة</div>}
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-3 py-4 text-center">
+                                <div className="min-w-[70px] font-extrabold text-blue-700">{a.completion_percentage ?? 0}%</div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
+
+                  {selectedPlanId && (
+                    <div className="mt-3 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={()=>loadPlanDetails(selectedPlanId)}
+                        className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50"
+                      >
+                        تحديث بيانات الجدول
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

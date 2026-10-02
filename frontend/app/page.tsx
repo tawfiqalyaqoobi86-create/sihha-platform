@@ -131,6 +131,8 @@ export default function Home() {
   const [aiSummary, setAiSummary] = useState<any>(null);
   const [showAI, setShowAI] = useState(false);
   const [competition, setCompetition] = useState<any>(null);
+  const [competitionAI, setCompetitionAI] = useState<any>(null);
+  const [analyzingCompetition, setAnalyzingCompetition] = useState(false);
   const SCHOOL_ID = "d088a83c-9619-4bc2-9c7e-02d9e5631617";
   const YEAR_ID = "49fbf490-53ec-4044-9b76-d856e9533ee3";
 
@@ -450,6 +452,25 @@ export default function Home() {
     const json=await r.json();
     if (!r.ok) { setError(json.detail || "تعذر تحميل وضع المسابقة"); return; }
     setCompetition(json.competition);
+  }
+
+  async function analyzeCompetitionReadiness() {
+    setAnalyzingCompetition(true);
+    setError("");
+    try {
+      const r = await fetch(API + "/api/ai/competition-readiness", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({school_id:SCHOOL_ID, academic_year_id:YEAR_ID})
+      });
+      const json = await r.json().catch(()=>({}));
+      if (!r.ok) throw new Error(json.detail || "تعذر تحليل جاهزية الملف");
+      setCompetitionAI(json.analysis);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "تعذر تحليل جاهزية الملف");
+    } finally {
+      setAnalyzingCompetition(false);
+    }
   }
 
   async function loadReport() {
@@ -1036,7 +1057,9 @@ export default function Home() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <button onClick={loadCompetition} className="rounded-xl border bg-white px-4 py-2 text-xs font-bold text-slate-700">تحديث البيانات</button>
-                  <button onClick={() => { setShowAI(true); loadAI(); }} className="rounded-xl bg-violet-600 px-4 py-2 text-xs font-bold text-white">تحليل الجاهزية بالذكاء الاصطناعي</button>
+                  <button onClick={analyzeCompetitionReadiness} disabled={analyzingCompetition} className="rounded-xl bg-violet-600 px-4 py-2 text-xs font-bold text-white disabled:opacity-50">
+                    {analyzingCompetition ? "جاري تحليل الجاهزية..." : "تحليل الجاهزية بالذكاء الاصطناعي"}
+                  </button>
                 </div>
               </div>
 
@@ -1057,7 +1080,7 @@ export default function Home() {
                   </div>
                 </div>
                 <div className="mt-3 rounded-xl bg-slate-50 p-3 text-xs leading-6 text-slate-600">
-                  الدرجة الرسمية للتقييم منفصلة عن مؤشر الجاهزية. هذا المؤشر يوضح مدى اكتمال الملف الموثق في المنصة.
+                  الدرجة الرسمية للتقييم منفصلة عن مؤشر الجاهزية. المؤشر هنا يقرأ اكتمال الملف التشغيلي والوثائقي فقط.
                 </div>
               </div>
 
@@ -1107,9 +1130,14 @@ export default function Home() {
                   </div>
                   <div className="space-y-2 text-sm">
                     {(competition.plans ?? []).slice(0, 5).map((p:any) => (
-                      <div key={p.id} className="rounded-xl bg-slate-50 px-3 py-2">
-                        <div className="font-bold">{p.title}</div>
-                        <div className="mt-1 text-xs text-slate-500">الحالة: {p.status}</div>
+                      <div key={p.id} className="rounded-xl bg-slate-50 px-3 py-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-bold">{p.title}</span>
+                          <span className="text-blue-700 font-extrabold">{p.completion ?? 0}%</span>
+                        </div>
+                        <div className="mt-1 text-[11px] text-slate-500">
+                          {p.objectives_count ?? 0} أهداف • {p.activities_count ?? 0} أنشطة • {p.documented_activities ?? 0} موثق
+                        </div>
                       </div>
                     ))}
                     {!competition.plans?.length && <div className="py-4 text-center text-xs text-slate-400">لا توجد خطط مسجلة بعد.</div>}
@@ -1146,6 +1174,43 @@ export default function Home() {
                   )}
                 </div>
               </div>
+
+              {competitionAI && (
+                <div className="mt-4 rounded-2xl border-2 border-violet-200 bg-violet-50/60 p-4">
+                  <div className="mb-3 flex items-center justify-between">
+                    <div>
+                      <h4 className="font-extrabold text-violet-900">قراءة ذكية لجاهزية الملف</h4>
+                      <p className="mt-1 text-xs text-slate-600">تحليل وصفي مبني على البيانات والشواهد المسجلة فقط.</p>
+                    </div>
+                  </div>
+                  <div className="rounded-xl bg-white p-4">
+                    <div className="text-sm font-extrabold text-violet-800">الخلاصة</div>
+                    <div className="mt-1 text-sm leading-7 text-slate-700">{competitionAI.summary}</div>
+                  </div>
+                  <div className="mt-3 grid gap-3 md:grid-cols-2">
+                    <div className="rounded-xl bg-white p-4">
+                      <div className="text-sm font-extrabold text-emerald-700">نقاط القوة</div>
+                      {(competitionAI.strengths ?? []).map((x:string,i:number)=><div key={i} className="mt-2 text-xs leading-6">• {x}</div>)}
+                    </div>
+                    <div className="rounded-xl bg-white p-4">
+                      <div className="text-sm font-extrabold text-amber-700">الفجوات</div>
+                      {(competitionAI.gaps ?? []).map((x:string,i:number)=><div key={i} className="mt-2 text-xs leading-6">• {x}</div>)}
+                    </div>
+                    <div className="rounded-xl bg-white p-4">
+                      <div className="text-sm font-extrabold text-red-700">فجوات الأدلة</div>
+                      {(competitionAI.evidence_gaps ?? []).map((x:string,i:number)=><div key={i} className="mt-2 text-xs leading-6">• {x}</div>)}
+                    </div>
+                    <div className="rounded-xl bg-white p-4">
+                      <div className="text-sm font-extrabold text-blue-700">فجوات الخطط والتنفيذ</div>
+                      {(competitionAI.plan_gaps ?? []).map((x:string,i:number)=><div key={i} className="mt-2 text-xs leading-6">• {x}</div>)}
+                    </div>
+                  </div>
+                  <div className="mt-3 rounded-xl bg-white p-4">
+                    <div className="mb-2 text-sm font-extrabold text-slate-800">الإجراءات ذات الأولوية</div>
+                    {(competitionAI.immediate_actions ?? []).map((x:string,i:number)=><div key={i} className="mt-2 text-xs font-bold text-slate-700">{i+1}. {x}</div>)}
+                  </div>
+                </div>
+              )}
 
               <div className="mt-4 rounded-2xl border border-blue-100 bg-blue-50/60 p-4">
                 <div className="mb-2 font-extrabold text-[#102a56]">ملاحظات القراءة</div>

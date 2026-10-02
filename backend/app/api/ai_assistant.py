@@ -429,8 +429,43 @@ def competition_readiness(payload: CompetitionReadinessRequest):
             .execute()
         ).data
 
+        total_evaluation_items = len(
+            supabase.table("evaluation_items").select("id").execute().data
+        )
+        evaluated_item_rows = (
+            supabase.table("school_evaluation_items")
+            .select("evaluation_item_id")
+            .eq("school_evaluation_id", evaluation.get("id"))
+            .execute()
+        ).data if evaluation.get("id") else []
+        evaluated_item_ids = {row["evaluation_item_id"] for row in evaluated_item_rows}
+
+        evaluation_evidence = (
+            supabase.table("evidence")
+            .select("id,school_evaluation_item_id")
+            .eq("school_evaluation_id", evaluation.get("id"))
+            .execute()
+        ).data if evaluation.get("id") else []
+        evidence_item_ids = {
+            row["school_evaluation_item_id"]
+            for row in evaluation_evidence
+            if row.get("school_evaluation_item_id")
+        }
+
         data = {
             "evaluation": evaluation,
+            "evaluation_context": {
+                "completed_items": len(evaluated_item_ids),
+                "total_items": total_evaluation_items,
+                "completion_percentage": round(
+                    (len(evaluated_item_ids) / total_evaluation_items) * 100, 1
+                ) if total_evaluation_items else 0,
+                "evidence_count": len(evaluation_evidence),
+                "items_with_evidence": len(evidence_item_ids),
+                "evidence_coverage_percentage": round(
+                    (len(evidence_item_ids) / total_evaluation_items) * 100, 1
+                ) if total_evaluation_items else 0,
+            },
             "problems": problems,
             "plans": plans,
             "objectives": objectives,

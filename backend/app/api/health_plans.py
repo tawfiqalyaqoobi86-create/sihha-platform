@@ -144,3 +144,33 @@ def create_activity(plan_id: str, payload: ActivityRequest):
         return {"success": True, "data": row.data[0]}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"حدث خطأ أثناء حفظ النشاط: {str(e)}")
+
+
+class ComponentLinkRequest(BaseModel):
+    component_ids: list[str]
+
+
+@router.post("/activities/{activity_id}/components")
+def link_activity_components(activity_id: str, payload: ComponentLinkRequest):
+    try:
+        supabase.table("activity_components").delete().eq("activity_id", activity_id).execute()
+        if payload.component_ids:
+            rows = [{"activity_id": activity_id, "component_id": cid} for cid in payload.component_ids]
+            supabase.table("activity_components").insert(rows).execute()
+        return {"success": True, "component_ids": payload.component_ids}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"حدث خطأ أثناء ربط النشاط بالمكونات: {str(e)}")
+
+
+@router.get("/activities/{activity_id}/components")
+def get_activity_components(activity_id: str):
+    try:
+        rows = (
+            supabase.table("activity_components")
+            .select("component_id")
+            .eq("activity_id", activity_id)
+            .execute()
+        )
+        return {"success": True, "data": [r["component_id"] for r in rows.data]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"حدث خطأ أثناء جلب ارتباطات المكونات: {str(e)}")

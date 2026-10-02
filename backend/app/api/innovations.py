@@ -2,6 +2,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from backend.app.core.supabase import supabase
+from backend.app.services.audit import audit
 
 router = APIRouter(prefix="/api/innovations", tags=["Health Innovation"])
 
@@ -30,5 +31,6 @@ def create_innovation(payload: InnovationRequest):
     try:
         r=supabase.table("innovations").insert(payload.model_dump(exclude_none=True)).execute()
         if not r.data: raise RuntimeError("تعذر حفظ الابتكار")
+        audit("create", "innovation", r.data[0]["id"], payload.school_id, details={"title": payload.title})
         return {"success":True,"data":r.data[0]}
     except Exception as e: raise HTTPException(status_code=500,detail=f"تعذر حفظ الابتكار: {e}")

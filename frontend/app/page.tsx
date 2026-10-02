@@ -71,6 +71,9 @@ export default function Home() {
   const [showProblems, setShowProblems] = useState(false);
   const [problemTitle, setProblemTitle] = useState("");
   const [problemDescription, setProblemDescription] = useState("");
+  const [priorityScore, setPriorityScore] = useState<Record<string, string>>({});
+  const [priorityJustification, setPriorityJustification] = useState<Record<string, string>>({});
+  const [savingPriority, setSavingPriority] = useState<Record<string, boolean>>({});
   const [plans, setPlans] = useState<any[]>([]);
   const [showPlans, setShowPlans] = useState(false);
   const [planTitle, setPlanTitle] = useState("");
@@ -318,6 +321,32 @@ export default function Home() {
     const r = await fetch(`${API}/api/health-problems/school/${SCHOOL_ID}/year/${YEAR_ID}`);
     const json = await r.json();
     setProblems(json.data ?? []);
+  }
+
+  async function saveProblemPriority(problemId: string) {
+    const score = Number(priorityScore[problemId] ?? "");
+    if (!Number.isFinite(score) || score < 0 || score > 100) {
+      setError("درجة الأولوية يجب أن تكون بين 0 و100");
+      return;
+    }
+    setSavingPriority((v) => ({ ...v, [problemId]: true }));
+    setError("");
+    try {
+      const r = await fetch(API + "/api/health-problems/priority", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ health_problem_id: problemId, priority_score: score, justification: priorityJustification[problemId] || null }),
+      });
+      const json = await r.json();
+      if (!r.ok) throw new Error(json.detail || "تعذر حفظ الأولوية");
+      await loadProblems();
+      setSaveMessage("تم حفظ أولوية المشكلة");
+      setTimeout(() => setSaveMessage(""), 2500);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "تعذر حفظ الأولوية");
+    } finally {
+      setSavingPriority((v) => ({ ...v, [problemId]: false }));
+    }
   }
 
   async function createProblem() {
@@ -669,9 +698,20 @@ export default function Home() {
               </div>
               <div className="mt-4 grid gap-2">
                 {problems.map((p)=>(
-                  <div key={p.id} className="flex items-center justify-between rounded-xl bg-slate-50 p-3">
-                    <div><div className="font-bold">{p.title}</div><div className="text-xs text-slate-500">{p.description || "لا يوجد وصف"}</div></div>
-                    <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">{p.priority_level === "high" ? "عالية" : p.priority_level === "low" ? "منخفضة" : "متوسطة"}</span>
+                  <div key={p.id} className="rounded-xl bg-slate-50 p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div><div className="font-bold">{p.title}</div><div className="text-xs text-slate-500">{p.description || "لا يوجد وصف"}</div></div>
+                      <span className={`rounded-full px-3 py-1 text-xs font-bold ${p.priority_level === "high" ? "bg-red-50 text-red-700" : p.priority_level === "low" ? "bg-slate-100 text-slate-700" : "bg-amber-50 text-amber-700"}`}>
+                        {p.priority_level === "high" ? "أولوية عالية" : p.priority_level === "low" ? "أولوية منخفضة" : "أولوية متوسطة"}
+                      </span>
+                    </div>
+                    <div className="mt-3 grid gap-2 md:grid-cols-[180px_1fr_auto]">
+                      <input type="number" min="0" max="100" value={priorityScore[p.id] ?? ""} onChange={(e)=>setPriorityScore(v=>({...v,[p.id]:e.target.value}))} placeholder="درجة الأولوية 0-100" className="rounded-xl border px-3 py-2 text-sm outline-none focus:border-blue-500" />
+                      <input value={priorityJustification[p.id] ?? ""} onChange={(e)=>setPriorityJustification(v=>({...v,[p.id]:e.target.value}))} placeholder="مبررات تحديد الأولوية" className="rounded-xl border px-3 py-2 text-sm outline-none focus:border-blue-500" />
+                      <button onClick={()=>saveProblemPriority(p.id)} disabled={savingPriority[p.id]} className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">
+                        {savingPriority[p.id] ? "جاري الحفظ..." : "حفظ الأولوية"}
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>

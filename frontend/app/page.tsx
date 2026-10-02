@@ -91,6 +91,8 @@ export default function Home() {
   const [showCompetition, setShowCompetition] = useState(false);
   const [showEvidenceHub, setShowEvidenceHub] = useState(false);
   const [allEvidence, setAllEvidence] = useState<any[]>([]);
+  const [evidenceTarget, setEvidenceTarget] = useState<Record<string,string>>({});
+  const [evidenceTargetId, setEvidenceTargetId] = useState<Record<string,string>>({});
   const [competition, setCompetition] = useState<any>(null);
   const SCHOOL_ID = "d088a83c-9619-4bc2-9c7e-02d9e5631617";
   const YEAR_ID = "49fbf490-53ec-4044-9b76-d856e9533ee8";
@@ -205,6 +207,17 @@ export default function Home() {
     if (!r.ok) { setError(json.detail || "تعذر حفظ النشاط"); return; }
     setActivityTitle(""); setActivityResponsible(""); setActivityStart(""); setActivityEnd("");
     await loadPlanDetails(selectedPlanId);
+  }
+
+  async function linkHubEvidence(evidenceId: string) {
+    const type=evidenceTarget[evidenceId], id=evidenceTargetId[evidenceId];
+    if (!type || !id) return;
+    const body:any={evidence_id:evidenceId}; body[type]=id;
+    const r=await fetch(API + "/api/evidence/link",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    const json=await r.json();
+    if(!r.ok){setError(json.detail||"تعذر ربط الشاهد");return;}
+    setSaveMessage("تم ربط الشاهد بنجاح");
+    setTimeout(()=>setSaveMessage(""),2500);
   }
 
   async function loadEvidenceHub() {
@@ -442,7 +455,14 @@ export default function Home() {
               <div className="grid gap-2">
                 {allEvidence.map((ev:any)=><div key={ev.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3">
                   <div><div className="font-bold">{ev.title}</div><div className="text-xs text-slate-500">{ev.original_file_name || "ملف"} • {ev.mime_type || "غير محدد"}</div></div>
-                  {ev.signed_url && <a href={ev.signed_url} target="_blank" rel="noreferrer" className="rounded-lg bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">فتح الشاهد</a>}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {ev.signed_url && <a href={ev.signed_url} target="_blank" rel="noreferrer" className="rounded-lg bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">فتح الشاهد</a>}
+                    <select value={evidenceTarget[ev.id]||""} onChange={e=>setEvidenceTarget(v=>({...v,[ev.id]:e.target.value}))} className="rounded-lg border px-2 py-1 text-xs">
+                      <option value="">ربط بـ...</option><option value="problem_id">مشكلة</option><option value="health_plan_id">خطة</option><option value="objective_id">هدف</option><option value="activity_id">نشاط</option><option value="result_id">نتيجة</option><option value="impact_measurement_id">أثر</option>
+                    </select>
+                    <input value={evidenceTargetId[ev.id]||""} onChange={e=>setEvidenceTargetId(v=>({...v,[ev.id]:e.target.value}))} placeholder="معرّف العنصر" className="w-32 rounded-lg border px-2 py-1 text-xs"/>
+                    <button onClick={()=>linkHubEvidence(ev.id)} className="rounded-lg bg-emerald-600 px-3 py-1 text-xs font-bold text-white">ربط</button>
+                  </div>
                 </div>)}
                 {!allEvidence.length && <div className="p-6 text-center text-sm text-slate-500">لا توجد شواهد مرفوعة بعد.</div>}
               </div>

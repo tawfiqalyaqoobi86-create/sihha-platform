@@ -69,6 +69,13 @@ export default function Home() {
   const [showEvidenceFor, setShowEvidenceFor] = useState<string | null>(null);
   const [problems, setProblems] = useState<any[]>([]);
   const [showProblems, setShowProblems] = useState(false);
+  const [innovations, setInnovations] = useState<any[]>([]);
+  const [showInnovations, setShowInnovations] = useState(false);
+  const [innovationTitle, setInnovationTitle] = useState("");
+  const [innovationIdea, setInnovationIdea] = useState("");
+  const [innovationProblemId, setInnovationProblemId] = useState("");
+  const [innovationAI, setInnovationAI] = useState<any>(null);
+  const [analyzingInnovation, setAnalyzingInnovation] = useState(false);
   const [problemTitle, setProblemTitle] = useState("");
   const [problemDescription, setProblemDescription] = useState("");
   const [priorityScore, setPriorityScore] = useState<Record<string, string>>({});
@@ -502,6 +509,66 @@ export default function Home() {
     }
   }
 
+  async function loadInnovations() {
+    try {
+      const r = await fetch(API + "/api/innovations/school/" + SCHOOL_ID + "/year/" + YEAR_ID);
+      const json = await r.json().catch(()=>({}));
+      if(!r.ok) throw new Error(json.detail || "تعذر تحميل بنك الابتكار");
+      setInnovations(json.data ?? []);
+    } catch(e) {
+      setError(e instanceof Error ? e.message : "تعذر تحميل بنك الابتكار");
+    }
+  }
+
+  async function createInnovation() {
+    if (!innovationTitle.trim() || !innovationIdea.trim()) {
+      setError("اكتب اسم الفكرة ووصفها المختصر.");
+      return;
+    }
+    try {
+      const r = await fetch(API + "/api/innovations/", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          school_id:SCHOOL_ID,
+          academic_year_id:YEAR_ID,
+          problem_id:innovationProblemId || null,
+          title:innovationTitle,
+          idea:innovationIdea,
+          status:"idea"
+        })
+      });
+      const json=await r.json().catch(()=>({}));
+      if(!r.ok) throw new Error(json.detail || "تعذر حفظ الفكرة");
+      setInnovationTitle("");
+      setInnovationIdea("");
+      await loadInnovations();
+      setSaveMessage("تم حفظ الفكرة في بنك الابتكار");
+      setTimeout(()=>setSaveMessage(""),2500);
+    } catch(e) {
+      setError(e instanceof Error ? e.message : "تعذر حفظ الفكرة");
+    }
+  }
+
+  async function analyzeInnovation(innovationId: string) {
+    setAnalyzingInnovation(true);
+    setError("");
+    try {
+      const r = await fetch(API + "/api/ai/innovation-analysis", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({innovation_id:innovationId})
+      });
+      const json=await r.json().catch(()=>({}));
+      if(!r.ok) throw new Error(json.detail || "تعذر تحليل الفكرة");
+      setInnovationAI(json.analysis);
+    } catch(e) {
+      setError(e instanceof Error ? e.message : "تعذر تحليل الفكرة");
+    } finally {
+      setAnalyzingInnovation(false);
+    }
+  }
+
   async function loadProblems() {
     const r = await fetch(`${API}/api/health-problems/school/${SCHOOL_ID}/year/${YEAR_ID}`);
     const json = await r.json();
@@ -745,6 +812,8 @@ export default function Home() {
             >
               <Target size={17} /> المشكلات الصحية
             </button>
+              <button onClick={()=>{setShowInnovations(!showInnovations); if (!showInnovations) loadInnovations();}} className="flex items-center gap-2 rounded-xl border bg-white px-4 py-2 text-sm font-bold"><Activity size={17}/> بنك الابتكار</button>
+
             </div>
           </div>
 
@@ -1191,6 +1260,57 @@ export default function Home() {
               )}
             </div>
           )}
+          {showInnovations && (
+            <div className="mb-4 rounded-2xl border-2 border-amber-200 bg-gradient-to-l from-amber-50 to-white p-5 shadow-sm">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-lg font-extrabold text-amber-900">بنك الابتكار الصحي</h3>
+                  <p className="text-xs text-slate-600">يسجل الفريق الفكرة فقط، ويقوم الذكاء الاصطناعي بتحليل الأثر والتوسع والاستدامة.</p>
+                </div>
+                <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-amber-700">{innovations.length} فكرة</span>
+              </div>
+              <div className="grid gap-2 lg:grid-cols-[1fr_1.4fr_1fr_auto]">
+                <input value={innovationTitle} onChange={e=>setInnovationTitle(e.target.value)} placeholder="اسم الفكرة / الابتكار" className="rounded-xl border bg-white px-3 py-2.5" />
+                <input value={innovationIdea} onChange={e=>setInnovationIdea(e.target.value)} placeholder="وصف مختصر للفكرة" className="rounded-xl border bg-white px-3 py-2.5" />
+                <select value={innovationProblemId} onChange={e=>setInnovationProblemId(e.target.value)} className="rounded-xl border bg-white px-3 py-2.5">
+                  <option value="">ربط بالمشكلة الصحية (اختياري)</option>
+                  {problems.map((p:any)=><option key={p.id} value={p.id}>{p.title}</option>)}
+                </select>
+                <button onClick={createInnovation} className="rounded-xl bg-amber-600 px-5 py-2.5 font-bold text-white">حفظ الفكرة</button>
+              </div>
+              <div className="mt-4 space-y-2">
+                {innovations.map((i:any)=>(
+                  <div key={i.id} className="rounded-xl bg-white p-3 ring-1 ring-slate-200">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <div className="font-extrabold text-slate-800">{i.title}</div>
+                        <div className="mt-1 text-xs text-slate-500">{i.idea}</div>
+                      </div>
+                      <button onClick={()=>analyzeInnovation(i.id)} disabled={analyzingInnovation} className="rounded-xl bg-violet-600 px-4 py-2 text-xs font-bold text-white disabled:opacity-50">
+                        {analyzingInnovation ? "جاري التحليل..." : "تحليل ذكي"}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {!innovations.length && <div className="py-5 text-center text-xs text-slate-400">لا توجد أفكار مسجلة بعد.</div>}
+              </div>
+              {innovationAI && (
+                <div className="mt-4 rounded-2xl border border-violet-200 bg-violet-50/60 p-4">
+                  <div className="grid gap-3 lg:grid-cols-2">
+                    <div className="rounded-xl bg-white p-3"><div className="text-xs font-extrabold text-violet-700">الملخص</div><div className="mt-1 text-sm font-bold leading-7">{innovationAI.summary}</div></div>
+                    <div className="rounded-xl bg-white p-3"><div className="text-xs font-extrabold text-violet-700">الأثر المتوقع</div><div className="mt-1 text-sm font-bold leading-7">{innovationAI.impact}</div></div>
+                    <div className="rounded-xl bg-white p-3"><div className="text-xs font-extrabold text-violet-700">إمكانات التوسع</div><div className="mt-1 text-sm font-bold leading-7">{innovationAI.scalability}</div></div>
+                    <div className="rounded-xl bg-white p-3"><div className="text-xs font-extrabold text-violet-700">الاستدامة</div><div className="mt-1 text-sm font-bold leading-7">{innovationAI.sustainability}</div></div>
+                  </div>
+                  <div className="mt-3 rounded-xl bg-white p-3">
+                    <div className="mb-2 text-xs font-extrabold text-slate-700">خطوات مقترحة</div>
+                    {(innovationAI.actions || []).map((x:string,i:number)=><div key={i} className="mt-1 text-xs font-bold text-slate-700">• {x}</div>)}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {showProblems && (
             <div className="mb-4 rounded-2xl border bg-white p-5 shadow-sm">
               <div className="mb-4 flex items-center justify-between">

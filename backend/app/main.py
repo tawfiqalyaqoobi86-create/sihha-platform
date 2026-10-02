@@ -14,6 +14,7 @@ from backend.app.api.impact import router as impact_router
 from backend.app.api.innovations import router as innovations_router
 from backend.app.api.partnerships import router as partnerships_router
 from backend.app.api.reports import router as reports_router
+from backend.app.api.competition import router as competition_router
 
 app = FastAPI(
     title="صِحّة",
@@ -40,6 +41,7 @@ app.include_router(impact_router)
 app.include_router(innovations_router)
 app.include_router(partnerships_router)
 app.include_router(reports_router)
+app.include_router(competition_router)
 
 @app.get("/")
 def root():

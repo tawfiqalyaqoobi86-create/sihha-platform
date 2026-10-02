@@ -362,6 +362,21 @@ export default function Home() {
     }
   }
 
+  async function deleteProblem(problemId: string, title: string) {
+    if (!window.confirm(`هل أنت متأكد من حذف المشكلة الصحية «${title}»؟\nسيتم حذف المشكلة وأولويتها فقط، ولا يمكن التراجع عن الحذف.`)) return;
+    setError("");
+    try {
+      const r = await fetch(`${API}/api/health-problems/${problemId}`, { method: "DELETE" });
+      const json = await r.json();
+      if (!r.ok) throw new Error(json.detail || "تعذر حذف المشكلة");
+      await loadProblems();
+      setSaveMessage("تم حذف المشكلة الصحية");
+      setTimeout(() => setSaveMessage(""), 2500);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "تعذر حذف المشكلة");
+    }
+  }
+
   async function createProblem() {
     if (!problemTitle.trim()) return;
     const r = await fetch(`${API}/api/health-problems/`, {
@@ -713,7 +728,10 @@ export default function Home() {
                 {problems.map((p)=>(
                   <div key={p.id} className="rounded-xl bg-slate-50 p-4">
                     <div className="flex items-center justify-between gap-3">
-                      <div><div className="font-bold">{p.title}</div><div className="text-xs text-slate-500">{p.description || "لا يوجد وصف"}</div></div>
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="min-w-0"><div className="font-bold">{p.title}</div><div className="text-xs text-slate-500">{p.description || "لا يوجد وصف"}</div></div>
+                        <button onClick={()=>deleteProblem(p.id, p.title)} className="shrink-0 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-700 hover:bg-red-100">حذف</button>
+                      </div>
                       <span className={`rounded-full px-3 py-1 text-xs font-bold ${p.priority_level === "high" ? "bg-red-50 text-red-700" : p.priority_level === "low" ? "bg-slate-100 text-slate-700" : "bg-amber-50 text-amber-700"}`}>
                         {p.priority_level === "high" ? "أولوية عالية" : p.priority_level === "low" ? "أولوية منخفضة" : "أولوية متوسطة"}
                       </span>

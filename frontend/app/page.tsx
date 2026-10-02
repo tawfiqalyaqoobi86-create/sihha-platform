@@ -69,6 +69,17 @@ export default function Home() {
   const [showEvidenceFor, setShowEvidenceFor] = useState<string | null>(null);
   const [problems, setProblems] = useState<any[]>([]);
   const [showProblems, setShowProblems] = useState(false);
+  const [partnerships, setPartnerships] = useState<any[]>([]);
+  const [twinning, setTwinning] = useState<any[]>([]);
+  const [showPartnerships, setShowPartnerships] = useState(false);
+  const [partnershipName, setPartnershipName] = useState("");
+  const [partnershipType, setPartnershipType] = useState("");
+  const [partnershipObjective, setPartnershipObjective] = useState("");
+  const [twinningSchoolName, setTwinningSchoolName] = useState("");
+  const [twinningObjective, setTwinningObjective] = useState("");
+  const [twinningActivities, setTwinningActivities] = useState("");
+  const [twinningAI, setTwinningAI] = useState<any>(null);
+  const [analyzingTwinning, setAnalyzingTwinning] = useState(false);
   const [innovations, setInnovations] = useState<any[]>([]);
   const [showInnovations, setShowInnovations] = useState(false);
   const [innovationTitle, setInnovationTitle] = useState("");
@@ -509,6 +520,103 @@ export default function Home() {
     }
   }
 
+  async function loadPartnerships() {
+    try {
+      const r = await fetch(API + "/api/partnerships/school/" + SCHOOL_ID + "/year/" + YEAR_ID);
+      const json = await r.json().catch(()=>({}));
+      if(!r.ok) throw new Error(json.detail || "تعذر تحميل الشراكات والتوأمة");
+      setPartnerships(json.partnerships ?? []);
+      setTwinning(json.twinning ?? []);
+    } catch(e) {
+      setError(e instanceof Error ? e.message : "تعذر تحميل الشراكات والتوأمة");
+    }
+  }
+
+  async function createPartnership() {
+    if(!partnershipName.trim() || !partnershipObjective.trim()) {
+      setError("أدخل اسم جهة الشراكة والهدف.");
+      return;
+    }
+    try {
+      const partnerResponse = await fetch(API + "/api/partnerships/partners", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({name:partnershipName, partner_type:partnershipType || null})
+      });
+      const partnerJson = await partnerResponse.json().catch(()=>({}));
+      if(!partnerResponse.ok) throw new Error(partnerJson.detail || "تعذر حفظ جهة الشراكة");
+      const partnerId=partnerJson.data?.id;
+      if(!partnerId) throw new Error("تعذر الحصول على معرّف جهة الشراكة");
+      const r = await fetch(API + "/api/partnerships/school", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          school_id:SCHOOL_ID,
+          partner_id:partnerId,
+          academic_year_id:YEAR_ID,
+          partnership_type:partnershipType || null,
+          objective:partnershipObjective
+        })
+      });
+      const json=await r.json().catch(()=>({}));
+      if(!r.ok) throw new Error(json.detail || "تعذر حفظ الشراكة");
+      setPartnershipName(""); setPartnershipType(""); setPartnershipObjective("");
+      await loadPartnerships();
+      setSaveMessage("تم حفظ الشراكة");
+      setTimeout(()=>setSaveMessage(""),2500);
+    } catch(e) {
+      setError(e instanceof Error ? e.message : "تعذر حفظ الشراكة");
+    }
+  }
+
+  async function createTwinning() {
+    if(!twinningSchoolName.trim() || !twinningObjective.trim()) {
+      setError("أدخل اسم المدرسة الشريكة وهدف التوأمة.");
+      return;
+    }
+    try {
+      const r=await fetch(API + "/api/partnerships/twinning", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          school_id:SCHOOL_ID,
+          academic_year_id:YEAR_ID,
+          partner_school_name:twinningSchoolName,
+          objective:twinningObjective,
+          activities:twinningActivities || null,
+          status:"planned"
+        })
+      });
+      const json=await r.json().catch(()=>({}));
+      if(!r.ok) throw new Error(json.detail || "تعذر حفظ التوأمة");
+      setTwinningSchoolName(""); setTwinningObjective(""); setTwinningActivities("");
+      await loadPartnerships();
+      setSaveMessage("تم حفظ التوأمة");
+      setTimeout(()=>setSaveMessage(""),2500);
+    } catch(e) {
+      setError(e instanceof Error ? e.message : "تعذر حفظ التوأمة");
+    }
+  }
+
+  async function analyzeTwinning(twinningId:string) {
+    setAnalyzingTwinning(true);
+    setError("");
+    try {
+      const r=await fetch(API + "/api/ai/twinning-analysis", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({twinning_id:twinningId})
+      });
+      const json=await r.json().catch(()=>({}));
+      if(!r.ok) throw new Error(json.detail || "تعذر تحليل التوأمة");
+      setTwinningAI(json.analysis);
+    } catch(e) {
+      setError(e instanceof Error ? e.message : "تعذر تحليل التوأمة");
+    } finally {
+      setAnalyzingTwinning(false);
+    }
+  }
+
   async function loadInnovations() {
     try {
       const r = await fetch(API + "/api/innovations/school/" + SCHOOL_ID + "/year/" + YEAR_ID);
@@ -813,6 +921,7 @@ export default function Home() {
               <Target size={17} /> المشكلات الصحية
             </button>
               <button onClick={()=>{setShowInnovations(!showInnovations); if (!showInnovations) loadInnovations();}} className="flex items-center gap-2 rounded-xl border bg-white px-4 py-2 text-sm font-bold"><Activity size={17}/> بنك الابتكار</button>
+              <button onClick={()=>{setShowPartnerships(!showPartnerships); if (!showPartnerships) loadPartnerships();}} className="flex items-center gap-2 rounded-xl border bg-white px-4 py-2 text-sm font-bold"><Users size={17}/> الشراكات والتوأمة</button>
 
             </div>
           </div>
@@ -1260,6 +1369,79 @@ export default function Home() {
               )}
             </div>
           )}
+          {showPartnerships && (
+            <div className="mb-4 rounded-2xl border-2 border-cyan-200 bg-gradient-to-l from-cyan-50 to-white p-5 shadow-sm">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-lg font-extrabold text-cyan-900">الشراكات والتوأمة</h3>
+                  <p className="text-xs text-slate-600">سجّل المعلومات الأساسية فقط، واترك تقييم القيمة والأثر للتحليل لاحقًا.</p>
+                </div>
+                <div className="flex gap-2">
+                  <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-cyan-700">{partnerships.length} شراكة</span>
+                  <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-violet-700">{twinning.length} توأمة</span>
+                </div>
+              </div>
+
+              <div className="grid gap-5 lg:grid-cols-2">
+                <div className="rounded-2xl border border-cyan-100 bg-white p-4">
+                  <h4 className="mb-3 font-extrabold text-slate-800">الشراكات المجتمعية</h4>
+                  <div className="grid gap-2">
+                    <input value={partnershipName} onChange={e=>setPartnershipName(e.target.value)} placeholder="اسم جهة الشراكة" className="rounded-xl border px-3 py-2.5" />
+                    <input value={partnershipType} onChange={e=>setPartnershipType(e.target.value)} placeholder="نوع الشراكة (اختياري)" className="rounded-xl border px-3 py-2.5" />
+                    <input value={partnershipObjective} onChange={e=>setPartnershipObjective(e.target.value)} placeholder="هدف الشراكة" className="rounded-xl border px-3 py-2.5" />
+                    <button onClick={createPartnership} className="rounded-xl bg-cyan-600 px-4 py-2.5 font-bold text-white">إضافة الشراكة</button>
+                  </div>
+                  <div className="mt-4 space-y-2">
+                    {partnerships.map((p:any)=>(
+                      <div key={p.id} className="rounded-xl bg-slate-50 p-3">
+                        <div className="font-extrabold text-slate-800">{p.partners?.name || "جهة شريكة"}</div>
+                        <div className="mt-1 text-xs text-slate-500">{p.objective || "لا يوجد هدف مسجل"}</div>
+                      </div>
+                    ))}
+                    {!partnerships.length && <div className="py-4 text-center text-xs text-slate-400">لا توجد شراكات مسجلة.</div>}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-violet-100 bg-white p-4">
+                  <h4 className="mb-3 font-extrabold text-slate-800">التوأمة المدرسية</h4>
+                  <div className="grid gap-2">
+                    <input value={twinningSchoolName} onChange={e=>setTwinningSchoolName(e.target.value)} placeholder="اسم المدرسة الشريكة" className="rounded-xl border px-3 py-2.5" />
+                    <input value={twinningObjective} onChange={e=>setTwinningObjective(e.target.value)} placeholder="هدف التوأمة" className="rounded-xl border px-3 py-2.5" />
+                    <textarea rows={2} value={twinningActivities} onChange={e=>setTwinningActivities(e.target.value)} placeholder="الأنشطة المشتركة (اختياري)" className="resize-none rounded-xl border px-3 py-2.5" />
+                    <button onClick={createTwinning} className="rounded-xl bg-violet-600 px-4 py-2.5 font-bold text-white">إضافة التوأمة</button>
+                  </div>
+                  <div className="mt-4 space-y-2">
+                    {twinning.map((t:any)=>(
+                      <div key={t.id} className="rounded-xl bg-slate-50 p-3">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <div className="font-extrabold text-slate-800">{t.partner_school_name}</div>
+                            <div className="mt-1 text-xs text-slate-500">{t.objective || "لا يوجد هدف مسجل"}</div>
+                          </div>
+                          <button onClick={()=>analyzeTwinning(t.id)} disabled={analyzingTwinning} className="rounded-xl bg-violet-600 px-4 py-2 text-xs font-bold text-white disabled:opacity-50">
+                            {analyzingTwinning ? "جاري التحليل..." : "تحليل ذكي"}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    {!twinning.length && <div className="py-4 text-center text-xs text-slate-400">لا توجد توأمات مسجلة.</div>}
+                  </div>
+                </div>
+              </div>
+
+              {twinningAI && (
+                <div className="mt-4 rounded-2xl border border-violet-200 bg-violet-50/60 p-4">
+                  <div className="grid gap-3 lg:grid-cols-2">
+                    <div className="rounded-xl bg-white p-3"><div className="text-xs font-extrabold text-violet-700">الملخص</div><div className="mt-1 text-sm font-bold leading-7">{twinningAI.summary}</div></div>
+                    <div className="rounded-xl bg-white p-3"><div className="text-xs font-extrabold text-violet-700">القيمة المتوقعة</div><div className="mt-1 text-sm font-bold leading-7">{twinningAI.value}</div></div>
+                    <div className="rounded-xl bg-white p-3"><div className="text-xs font-extrabold text-violet-700">فرص التبادل</div><div className="mt-1 text-sm font-bold leading-7">{twinningAI.exchange}</div></div>
+                    <div className="rounded-xl bg-white p-3"><div className="text-xs font-extrabold text-violet-700">خطوات مقترحة</div><div className="mt-1 text-sm font-bold leading-7">{(twinningAI.actions || []).join(" • ")}</div></div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {showInnovations && (
             <div className="mb-4 rounded-2xl border-2 border-amber-200 bg-gradient-to-l from-amber-50 to-white p-5 shadow-sm">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">

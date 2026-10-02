@@ -266,3 +266,67 @@ summary, impact, scalability, sustainability, actions
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"تعذر إعداد التحليل الذكي للابتكار: {e}")
+
+class TwinningAnalysisRequest(BaseModel):
+    twinning_id: str
+
+
+@router.post("/twinning-analysis")
+def twinning_analysis(payload: TwinningAnalysisRequest):
+    try:
+        import os
+        import json
+        from openai import OpenAI
+
+        rows = (
+            supabase.table("school_twinning")
+            .select("id,school_id,academic_year_id,partner_school_name,partner_school_code,objective,activities,outcomes,evidence_summary,status")
+            .eq("id", payload.twinning_id)
+            .limit(1)
+            .execute()
+        ).data
+        if not rows:
+            raise HTTPException(status_code=404, detail="سجل التوأمة غير موجود")
+
+        twinning = rows[0]
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise HTTPException(status_code=500, detail="مفتاح OPENAI_API_KEY غير مضبوط في بيئة الخادم")
+        model = os.getenv("OPENAI_MODEL", "gpt-6-luna")
+        if model in {"gpt-5.6-mini", "gpt-5.6-mini-latest"}:
+            model = "gpt-6-luna"
+
+        client = OpenAI(api_key=api_key)
+        system_prompt = """
+أنت مساعد متخصص في تحليل التوأمة والشراكات المدرسية في منصة «صِحّة».
+اعتمد فقط على بيانات سجل التوأمة.
+لا تخترع نتائج أو أرقامًا أو شواهد.
+لا تستبدل قرار فريق المدرسة.
+أخرج JSON صالحًا فقط بالمفاتيح:
+summary, value, exchange, actions
+وهي نصوص عربية واضحة، وactions قائمة قصيرة.
+إذا كانت البيانات غير كافية فاذكر ذلك صراحة.
+""".strip()
+
+        response = client.responses.create(
+            model=model,
+            input=[
+                {"role":"system","content":system_prompt},
+                {"role":"user","content":json.dumps(twinning, ensure_ascii=False)}
+            ],
+        )
+        raw=response.output_text
+        try:
+            analysis=json.loads(raw)
+        except json.JSONDecodeError:
+            analysis={
+                "summary":raw,
+                "value":"تحتاج قيمة التوأمة إلى مزيد من البيانات.",
+                "exchange":"تحتاج فرص التبادل إلى تفاصيل إضافية.",
+                "actions":[]
+            }
+        return {"success":True,"twinning_id":payload.twinning_id,"analysis":analysis}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"تعذر إعداد التحليل الذكي للتوأمة: {e}")

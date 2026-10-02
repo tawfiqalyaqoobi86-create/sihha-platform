@@ -75,14 +75,14 @@ def set_priority(payload: PriorityRequest):
         data = {
             "problem_id": payload.health_problem_id,
             "priority_score": payload.priority_score,
-            "justification": payload.justification,
+            "rationale": payload.justification,
         }
         if existing.data:
             row = (
                 supabase.table("problem_priorities")
                 .update({
                     "priority_score": payload.priority_score,
-                    "justification": payload.justification,
+                    "rationale": payload.justification,
                 })
                 .eq("id", existing.data[0]["id"])
                 .execute()

@@ -72,7 +72,7 @@ def get_component_evaluation_items(component_id: str):
         indicators = (
             supabase
             .table("indicators")
-            .select("id,component_id,code,title,description,sort_order")
+            .select("id,component_id,code,name,description,sort_order")
             .eq("component_id", component_id)
             .order("sort_order")
             .execute()
@@ -91,7 +91,9 @@ def get_component_evaluation_items(component_id: str):
         items = (
             supabase
             .table("evaluation_items")
-            .select("id,indicator_id,code,title,description,max_score,sort_order")
+            .select(
+                "id,indicator_id,item_number,code,title,description,max_score,sort_order"
+            )
             .in_("indicator_id", indicator_ids)
             .order("sort_order")
             .execute()
@@ -105,7 +107,7 @@ def get_component_evaluation_items(component_id: str):
             sources = (
                 supabase
                 .table("evaluation_sources")
-                .select("id,evaluation_item_id,source_type,title,description")
+                .select("id,evaluation_item_id,title,description,created_at")
                 .in_("evaluation_item_id", item_ids)
                 .order("created_at")
                 .execute()

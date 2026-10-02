@@ -5,6 +5,7 @@ import uuid
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from backend.app.core.supabase import supabase
+from backend.app.services.audit import audit
 
 router = APIRouter(prefix="/api/evidence", tags=["Evidence"])
 
@@ -116,6 +117,7 @@ async def upload_evidence(
         if not saved.data:
             raise RuntimeError("تعذر حفظ بيانات الشاهد")
 
+        audit("create", "evidence", saved.data[0]["id"], school_id, details={"title": title, "evaluation_item_id": evaluation_item_id})
         return {"success": True, "data": saved.data[0]}
 
     except HTTPException:
@@ -201,6 +203,7 @@ def link_evidence(payload: EvidenceLinkRequest):
         if not targets:
             raise HTTPException(status_code=400, detail="حدد جهة واحدة على الأقل لربط الشاهد بها")
         saved = supabase.table("evidence_links").insert({"evidence_id":payload.evidence_id, **targets, "link_note":payload.link_note}).execute()
+        audit("link", "evidence", payload.evidence_id, details=targets)
         return {"success": True, "data": saved.data[0] if saved.data else None}
     except HTTPException:
         raise

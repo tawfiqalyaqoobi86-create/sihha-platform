@@ -320,7 +320,20 @@ export default function Home() {
   async function loadProblems() {
     const r = await fetch(`${API}/api/health-problems/school/${SCHOOL_ID}/year/${YEAR_ID}`);
     const json = await r.json();
-    setProblems(json.data ?? []);
+    const data = json.data ?? [];
+    setProblems(data);
+    const scores: Record<string, string> = {};
+    const rationales: Record<string, string> = {};
+    for (const problem of data) {
+      if (problem.priority_score !== null && problem.priority_score !== undefined) {
+        scores[problem.id] = String(problem.priority_score);
+      }
+      if (problem.priority_rationale) {
+        rationales[problem.id] = problem.priority_rationale;
+      }
+    }
+    setPriorityScore(scores);
+    setPriorityJustification(rationales);
   }
 
   async function saveProblemPriority(problemId: string) {

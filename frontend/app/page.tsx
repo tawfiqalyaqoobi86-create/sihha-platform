@@ -72,6 +72,11 @@ export default function Home() {
   const [partnerships, setPartnerships] = useState<any[]>([]);
   const [twinning, setTwinning] = useState<any[]>([]);
   const [showPartnerships, setShowPartnerships] = useState(false);
+  const [communityRelationType, setCommunityRelationType] = useState<"community"|"twinning">("community");
+  const [communityName, setCommunityName] = useState("");
+  const [communityType, setCommunityType] = useState("");
+  const [communityObjective, setCommunityObjective] = useState("");
+  const [communityActivities, setCommunityActivities] = useState("");
   const [partnershipName, setPartnershipName] = useState("");
   const [partnershipType, setPartnershipType] = useState("");
   const [partnershipObjective, setPartnershipObjective] = useState("");
@@ -614,6 +619,67 @@ export default function Home() {
       setError(e instanceof Error ? e.message : "تعذر تحليل التوأمة");
     } finally {
       setAnalyzingTwinning(false);
+    }
+  }
+
+  async function saveCommunityRelation() {
+    if (communityRelationType === "community") {
+      setPartnershipName(communityName);
+      setPartnershipType(communityType);
+      setPartnershipObjective(communityObjective);
+      await new Promise(resolve => setTimeout(resolve, 0));
+      try {
+        const partnerResponse = await fetch(API + "/api/partnerships/partners", {
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({name:communityName, partner_type:communityType || null})
+        });
+        const partnerJson = await partnerResponse.json().catch(()=>({}));
+        if(!partnerResponse.ok) throw new Error(partnerJson.detail || "تعذر حفظ جهة الشراكة");
+        const partnerId = partnerJson.data?.id;
+        if(!partnerId) throw new Error("تعذر الحصول على معرّف جهة الشراكة");
+        const r = await fetch(API + "/api/partnerships/school", {
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({school_id:SCHOOL_ID,partner_id:partnerId,academic_year_id:YEAR_ID,partnership_type:communityType || null,objective:communityObjective})
+        });
+        const json = await r.json().catch(()=>({}));
+        if(!r.ok) throw new Error(json.detail || "تعذر حفظ الشراكة");
+        setCommunityName(""); setCommunityType(""); setCommunityObjective("");
+        await loadPartnerships();
+        setSaveMessage("تم حفظ الشراكة المجتمعية");
+        setTimeout(()=>setSaveMessage(""),2500);
+      } catch(e) {
+        setError(e instanceof Error ? e.message : "تعذر حفظ الشراكة المجتمعية");
+      }
+      return;
+    }
+
+    if (!communityName.trim() || !communityObjective.trim()) {
+      setError("أدخل اسم المدرسة الشريكة وهدف التوأمة.");
+      return;
+    }
+    try {
+      const r = await fetch(API + "/api/partnerships/twinning", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          school_id:SCHOOL_ID,
+          academic_year_id:YEAR_ID,
+          partner_school_name:communityName,
+          objective:communityObjective,
+          activities:communityActivities || null,
+          status:"planned"
+        })
+      });
+      const json = await r.json().catch(()=>({}));
+      if(!r.ok) throw new Error(json.detail || "تعذر حفظ التوأمة");
+      setCommunityName(""); setCommunityObjective(""); setCommunityActivities("");
+      await loadPartnerships();
+      setSaveMessage("تم حفظ التوأمة");
+      setTimeout(()=>setSaveMessage(""),2500);
+    } catch(e) {
+      setError(e instanceof Error ? e.message : "تعذر حفظ التوأمة");
     }
   }
 
@@ -1373,72 +1439,74 @@ export default function Home() {
             <div className="mb-4 rounded-2xl border-2 border-cyan-200 bg-gradient-to-l from-cyan-50 to-white p-5 shadow-sm">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h3 className="text-lg font-extrabold text-cyan-900">الشراكات والتوأمة</h3>
-                  <p className="text-xs text-slate-600">سجّل المعلومات الأساسية فقط، واترك تقييم القيمة والأثر للتحليل لاحقًا.</p>
+                  <h3 className="text-lg font-extrabold text-cyan-900">الشراكة المجتمعية</h3>
+                  <p className="text-xs text-slate-600">الشراكة والتوأمة في سجل واحد، مع اختلاف النوع فقط. يسجل الفريق الأساسيات، ويمكن للذكاء الاصطناعي تحليل القيمة والأثر لاحقًا.</p>
                 </div>
-                <div className="flex gap-2">
-                  <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-cyan-700">{partnerships.length} شراكة</span>
-                  <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-violet-700">{twinning.length} توأمة</span>
+                <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-cyan-700">{partnerships.length + twinning.length} شراكة مجتمعية</span>
+              </div>
+
+              <div className="rounded-2xl border border-cyan-100 bg-white p-4">
+                <div className="grid gap-2 lg:grid-cols-[180px_1fr_1fr_1.4fr_1fr_auto]">
+                  <select value={communityRelationType} onChange={e=>setCommunityRelationType(e.target.value as "community"|"twinning")} className="rounded-xl border px-3 py-2.5">
+                    <option value="community">شراكة مجتمعية</option>
+                    <option value="twinning">توأمة مدرسية</option>
+                  </select>
+                  <input value={communityName} onChange={e=>setCommunityName(e.target.value)} placeholder={communityRelationType==="twinning" ? "اسم المدرسة الشريكة" : "اسم جهة الشراكة"} className="rounded-xl border px-3 py-2.5" />
+                  {communityRelationType==="community" ? (
+                    <input value={communityType} onChange={e=>setCommunityType(e.target.value)} placeholder="نوع الشراكة (اختياري)" className="rounded-xl border px-3 py-2.5" />
+                  ) : (
+                    <input value={communityActivities} onChange={e=>setCommunityActivities(e.target.value)} placeholder="الأنشطة المشتركة (اختياري)" className="rounded-xl border px-3 py-2.5" />
+                  )}
+                  <input value={communityObjective} onChange={e=>setCommunityObjective(e.target.value)} placeholder={communityRelationType==="twinning" ? "هدف التوأمة" : "هدف الشراكة"} className="rounded-xl border px-3 py-2.5" />
+                  <div className="rounded-xl bg-cyan-50 px-3 py-2.5 text-xs font-bold text-cyan-800">
+                    {communityRelationType==="twinning" ? "مدرسة ↔ مدرسة" : "المدرسة ↔ جهة مجتمعية"}
+                  </div>
+                  <button onClick={saveCommunityRelation} className="rounded-xl bg-cyan-600 px-5 py-2.5 font-bold text-white">
+                    إضافة
+                  </button>
                 </div>
               </div>
 
-              <div className="grid gap-5 lg:grid-cols-2">
-                <div className="rounded-2xl border border-cyan-100 bg-white p-4">
-                  <h4 className="mb-3 font-extrabold text-slate-800">الشراكات المجتمعية</h4>
-                  <div className="grid gap-2">
-                    <input value={partnershipName} onChange={e=>setPartnershipName(e.target.value)} placeholder="اسم جهة الشراكة" className="rounded-xl border px-3 py-2.5" />
-                    <input value={partnershipType} onChange={e=>setPartnershipType(e.target.value)} placeholder="نوع الشراكة (اختياري)" className="rounded-xl border px-3 py-2.5" />
-                    <input value={partnershipObjective} onChange={e=>setPartnershipObjective(e.target.value)} placeholder="هدف الشراكة" className="rounded-xl border px-3 py-2.5" />
-                    <button onClick={createPartnership} className="rounded-xl bg-cyan-600 px-4 py-2.5 font-bold text-white">إضافة الشراكة</button>
-                  </div>
-                  <div className="mt-4 space-y-2">
-                    {partnerships.map((p:any)=>(
-                      <div key={p.id} className="rounded-xl bg-slate-50 p-3">
-                        <div className="font-extrabold text-slate-800">{p.partners?.name || "جهة شريكة"}</div>
-                        <div className="mt-1 text-xs text-slate-500">{p.objective || "لا يوجد هدف مسجل"}</div>
-                      </div>
+              <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+                <table className="w-full min-w-[900px] border-collapse text-right">
+                  <thead className="bg-slate-100">
+                    <tr className="text-xs font-extrabold text-slate-700">
+                      <th className="border-b px-3 py-3">النوع</th>
+                      <th className="border-b px-3 py-3">الجهة / المدرسة الشريكة</th>
+                      <th className="border-b px-3 py-3">هدف الشراكة</th>
+                      <th className="border-b px-3 py-3">الأنشطة / مجالات التعاون</th>
+                      <th className="border-b px-3 py-3">الحالة</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {[
+                      ...partnerships.map((p:any)=>({
+                        id:"p-"+p.id,type:"شراكة مجتمعية",name:p.partners?.name || "جهة شريكة",
+                        objective:p.objective || "—",activities:p.joint_activities || "—",
+                        status:p.status || "active"
+                      })),
+                      ...twinning.map((t:any)=>({
+                        id:"t-"+t.id,type:"توأمة مدرسية",name:t.partner_school_name,
+                        objective:t.objective || "—",activities:t.activities || "—",
+                        status:t.status || "planned"
+                      }))
+                    ].map((row:any)=>(
+                      <tr key={row.id} className="hover:bg-slate-50">
+                        <td className="px-3 py-3">
+                          <span className="rounded-full bg-cyan-50 px-3 py-1 text-xs font-bold text-cyan-700">{row.type}</span>
+                        </td>
+                        <td className="px-3 py-3 font-extrabold text-slate-800">{row.name}</td>
+                        <td className="px-3 py-3 text-sm font-bold text-slate-700">{row.objective}</td>
+                        <td className="px-3 py-3 text-sm text-slate-600">{row.activities}</td>
+                        <td className="px-3 py-3 text-xs font-bold text-slate-500">{row.status}</td>
+                      </tr>
                     ))}
-                    {!partnerships.length && <div className="py-4 text-center text-xs text-slate-400">لا توجد شراكات مسجلة.</div>}
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-violet-100 bg-white p-4">
-                  <h4 className="mb-3 font-extrabold text-slate-800">التوأمة المدرسية</h4>
-                  <div className="grid gap-2">
-                    <input value={twinningSchoolName} onChange={e=>setTwinningSchoolName(e.target.value)} placeholder="اسم المدرسة الشريكة" className="rounded-xl border px-3 py-2.5" />
-                    <input value={twinningObjective} onChange={e=>setTwinningObjective(e.target.value)} placeholder="هدف التوأمة" className="rounded-xl border px-3 py-2.5" />
-                    <textarea rows={2} value={twinningActivities} onChange={e=>setTwinningActivities(e.target.value)} placeholder="الأنشطة المشتركة (اختياري)" className="resize-none rounded-xl border px-3 py-2.5" />
-                    <button onClick={createTwinning} className="rounded-xl bg-violet-600 px-4 py-2.5 font-bold text-white">إضافة التوأمة</button>
-                  </div>
-                  <div className="mt-4 space-y-2">
-                    {twinning.map((t:any)=>(
-                      <div key={t.id} className="rounded-xl bg-slate-50 p-3">
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                          <div>
-                            <div className="font-extrabold text-slate-800">{t.partner_school_name}</div>
-                            <div className="mt-1 text-xs text-slate-500">{t.objective || "لا يوجد هدف مسجل"}</div>
-                          </div>
-                          <button onClick={()=>analyzeTwinning(t.id)} disabled={analyzingTwinning} className="rounded-xl bg-violet-600 px-4 py-2 text-xs font-bold text-white disabled:opacity-50">
-                            {analyzingTwinning ? "جاري التحليل..." : "تحليل ذكي"}
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                    {!twinning.length && <div className="py-4 text-center text-xs text-slate-400">لا توجد توأمات مسجلة.</div>}
-                  </div>
-                </div>
+                    {!partnerships.length && !twinning.length && (
+                      <tr><td colSpan={5} className="px-5 py-8 text-center text-xs text-slate-400">لا توجد شراكات مجتمعية مسجلة بعد.</td></tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
-
-              {twinningAI && (
-                <div className="mt-4 rounded-2xl border border-violet-200 bg-violet-50/60 p-4">
-                  <div className="grid gap-3 lg:grid-cols-2">
-                    <div className="rounded-xl bg-white p-3"><div className="text-xs font-extrabold text-violet-700">الملخص</div><div className="mt-1 text-sm font-bold leading-7">{twinningAI.summary}</div></div>
-                    <div className="rounded-xl bg-white p-3"><div className="text-xs font-extrabold text-violet-700">القيمة المتوقعة</div><div className="mt-1 text-sm font-bold leading-7">{twinningAI.value}</div></div>
-                    <div className="rounded-xl bg-white p-3"><div className="text-xs font-extrabold text-violet-700">فرص التبادل</div><div className="mt-1 text-sm font-bold leading-7">{twinningAI.exchange}</div></div>
-                    <div className="rounded-xl bg-white p-3"><div className="text-xs font-extrabold text-violet-700">خطوات مقترحة</div><div className="mt-1 text-sm font-bold leading-7">{(twinningAI.actions || []).join(" • ")}</div></div>
-                  </div>
-                </div>
-              )}
             </div>
           )}
 

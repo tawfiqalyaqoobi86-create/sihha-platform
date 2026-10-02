@@ -36,7 +36,24 @@ def list_problems(school_id: str, academic_year_id: str):
             .order("created_at", desc=True)
             .execute()
         )
-        return {"success": True, "data": rows.data}
+        problems = rows.data or []
+        if not problems:
+            return {"success": True, "data": []}
+
+        problem_ids = [p["id"] for p in problems]
+        priorities = (
+            supabase.table("problem_priorities")
+            .select("problem_id,priority_score,rationale")
+            .in_("problem_id", problem_ids)
+            .execute()
+        )
+        priority_map = {p["problem_id"]: p for p in (priorities.data or [])}
+        for problem in problems:
+            priority = priority_map.get(problem["id"])
+            problem["priority_score"] = priority.get("priority_score") if priority else None
+            problem["priority_rationale"] = priority.get("rationale") if priority else None
+
+        return {"success": True, "data": problems}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"حدث خطأ أثناء جلب المشكلات: {str(e)}")
 

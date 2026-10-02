@@ -16,6 +16,7 @@ from backend.app.api.partnerships import router as partnerships_router
 from backend.app.api.reports import router as reports_router
 from backend.app.api.competition import router as competition_router
 from backend.app.api.ai_assistant import router as ai_router
+from backend.app.api.audit import router as audit_router
 
 app = FastAPI(
     title="صِحّة",
@@ -44,6 +45,7 @@ app.include_router(partnerships_router)
 app.include_router(reports_router)
 app.include_router(competition_router)
 app.include_router(ai_router)
+app.include_router(audit_router)
 
 @app.get("/")
 def root():

@@ -35,3 +35,145 @@ def school_summary(payload: AIRequest):
         }}
     except Exception as e:
         raise HTTPException(status_code=500,detail=f"تعذر إعداد التحليل الذكي: {e}")
+
+
+class PlanAnalysisRequest(BaseModel):
+    plan_id: str
+
+
+@router.post("/plan-analysis")
+def plan_analysis(payload: PlanAnalysisRequest):
+    try:
+        from openai import OpenAI
+        import os
+        import json
+
+        plan_rows = (
+            supabase.table("health_plans")
+            .select("id,school_id,academic_year_id,problem_id,title,main_goal,status,start_date,end_date,responsible_person")
+            .eq("id", payload.plan_id)
+            .limit(1)
+            .execute()
+        ).data
+        if not plan_rows:
+            raise HTTPException(status_code=404, detail="الخطة الصحية غير موجودة")
+
+        plan = plan_rows[0]
+        problems = (
+            supabase.table("health_problems")
+            .select("id,title,description,priority_level,priority_score,status")
+            .eq("id", plan["problem_id"])
+            .limit(1)
+            .execute()
+        ).data
+
+        objectives = (
+            supabase.table("objectives")
+            .select("id,title,description,target_value,target_unit,target_date")
+            .eq("health_plan_id", payload.plan_id)
+            .order("sort_order")
+            .execute()
+        ).data
+
+        activities = (
+            supabase.table("activities")
+            .select("id,objective_id,title,description,activity_type,start_date,end_date,responsible_person,status,completion_percentage")
+            .eq("health_plan_id", payload.plan_id)
+            .order("start_date")
+            .execute()
+        ).data
+
+        activity_ids = [a["id"] for a in activities]
+        evidence_links = []
+        evidence = []
+        if activity_ids:
+            evidence_links = (
+                supabase.table("evidence_links")
+                .select("evidence_id,activity_id,link_note")
+                .in_("activity_id", activity_ids)
+                .execute()
+            ).data
+            evidence_ids = list(dict.fromkeys(x["evidence_id"] for x in evidence_links))
+            if evidence_ids:
+                evidence = (
+                    supabase.table("evidence")
+                    .select("id,title,description,original_file_name,mime_type,created_at")
+                    .in_("id", evidence_ids)
+                    .order("created_at", desc=True)
+                    .execute()
+                ).data
+
+        evidence_by_activity = {}
+        evidence_map = {e["id"]: e for e in evidence}
+        for link in evidence_links:
+            evidence_by_activity.setdefault(link["activity_id"], []).append(evidence_map.get(link["evidence_id"]))
+
+        prompt_data = {
+            "plan": plan,
+            "problem": problems[0] if problems else None,
+            "objectives": objectives,
+            "activities": [
+                {**a, "evidence": [e for e in evidence_by_activity.get(a["id"], []) if e]}
+                for a in activities
+            ],
+        }
+
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise HTTPException(status_code=500, detail="مفتاح OPENAI_API_KEY غير مضبوط في بيئة الخادم")
+
+        model = os.getenv("OPENAI_MODEL", "gpt-5.6-mini")
+        client = OpenAI(api_key=api_key)
+
+        system_prompt = """
+أنت مساعد تحليلي متخصص في منصة «صِحّة» للمدارس المعززة للصحة.
+حلّل الخطة الصحية اعتمادًا حصراً على البيانات والشواهد المرسلة إليك.
+لا تخترع أرقامًا أو نتائج أو شواهد غير موجودة.
+إذا كانت البيانات غير كافية، اذكر بوضوح أن الاستنتاج يحتاج إلى تحقق أو بيانات إضافية.
+لا تطلب من فريق المدرسة إدخال حقول إضافية لمجرد التحليل؛ استخرج أكبر قدر ممكن من المعنى من البيانات الموجودة.
+أخرج JSON صالحًا فقط بالمفاتيح:
+summary, objective_analysis, activity_analysis, evidence_analysis, inferred_results, impact_assessment, improvement_actions
+ويكون:
+summary: فقرة عربية قصيرة.
+objective_analysis: قائمة من عناصر تحتوي objective وstatus وnote.
+activity_analysis: قائمة من عناصر تحتوي activity وcontribution.
+evidence_analysis: قائمة من عناصر تحتوي activity وevidence_count وassessment.
+inferred_results: قائمة من عناصر تحتوي statement وbasis وconfidence.
+impact_assessment: فقرة عربية، وإذا لم تكف البيانات فقل ذلك صراحة.
+improvement_actions: قائمة من إجراءات قصيرة قابلة للتنفيذ.
+استخدم لغة عربية رسمية واضحة ومختصرة.
+""".strip()
+
+        response = client.responses.create(
+            model=model,
+            input=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": json.dumps(prompt_data, ensure_ascii=False)},
+            ],
+        )
+
+        raw = response.output_text
+        try:
+            analysis = json.loads(raw)
+        except json.JSONDecodeError:
+            analysis = {
+                "summary": raw,
+                "objective_analysis": [],
+                "activity_analysis": [],
+                "evidence_analysis": [],
+                "inferred_results": [],
+                "impact_assessment": "تعذر استخراج البنية المنظمة للتحليل؛ يرجى إعادة المحاولة.",
+                "improvement_actions": [],
+            }
+
+        return {
+            "success": True,
+            "plan_id": payload.plan_id,
+            "analysis": analysis,
+            "note": "هذا التحليل مبني على البيانات والشواهد المسجلة في المنصة فقط، ولا يستبدل حكم الفريق."
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"تعذر إعداد التحليل الذكي للخطة: {e}")
+

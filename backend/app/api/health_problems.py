@@ -21,7 +21,7 @@ class ProblemRequest(BaseModel):
 
 class PriorityRequest(BaseModel):
     health_problem_id: str
-    priority_score: float = Field(ge=0)
+    priority_score: float = Field(ge=0, le=100)
     justification: str | None = None
 
 
@@ -68,12 +68,12 @@ def set_priority(payload: PriorityRequest):
         existing = (
             supabase.table("problem_priorities")
             .select("id")
-            .eq("health_problem_id", payload.health_problem_id)
+            .eq("problem_id", payload.health_problem_id)
             .limit(1)
             .execute()
         )
         data = {
-            "health_problem_id": payload.health_problem_id,
+            "problem_id": payload.health_problem_id,
             "priority_score": payload.priority_score,
             "justification": payload.justification,
         }

@@ -197,10 +197,24 @@ export default function Home() {
       fetch(`${API}/api/health-plans/${planId}/objectives`).then(r => r.json()),
       fetch(`${API}/api/health-plans/${planId}/activities`).then(r => r.json()),
     ]);
+    const loadedActivities = a.data ?? [];
     setObjectives(o.data ?? []);
-    setActivities(a.data ?? []);
-  }
+    setActivities(loadedActivities);
 
+    // تحميل المكونات المرتبطة فعليًا بكل نشاط عند فتح الخطة
+    const componentEntries = await Promise.all(
+      loadedActivities.map(async (activity: any) => {
+        try {
+          const response = await fetch(`${API}/api/health-plans/activities/${activity.id}/components`);
+          const json = await response.json();
+          return [activity.id, json.data ?? []] as const;
+        } catch {
+          return [activity.id, []] as const;
+        }
+      })
+    );
+    setActivityComponents(Object.fromEntries(componentEntries));
+  }
   async function createObjective() {
     if (!selectedPlanId || !objectiveTitle.trim()) return;
     const r = await fetch(`${API}/api/health-plans/${selectedPlanId}/objectives`, {

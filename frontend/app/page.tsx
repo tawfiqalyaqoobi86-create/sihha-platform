@@ -281,21 +281,63 @@ export default function Home() {
       setError(e instanceof Error ? e.message : "تعذر تحميل تفاصيل الخطة");
     }
   }
+  useEffect(() => {
+    if (objectives.length === 1) {
+      setActivityObjectiveId(prev => prev || objectives[0].id);
+    } else if (objectives.length !== 1 && !objectives.some((o:any)=>o.id === activityObjectiveId)) {
+      setActivityObjectiveId("");
+    }
+  }, [objectives]);
+
+  async function updateActivityObjective(activityId: string, objectiveId: string) {
+    setError("");
+    try {
+      const r = await fetch(`${API}/api/health-plans/activities/${activityId}`, {
+        method: "PUT",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({objective_id: objectiveId || null}),
+      });
+      const json = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(json.detail || "تعذر ربط النشاط بالهدف");
+      setActivities(current => current.map(a => a.id === activityId ? {...a, objective_id: objectiveId || null} : a));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "تعذر ربط النشاط بالهدف");
+    }
+  }
+
   async function createObjective() {
     if (!selectedPlanId || !objectiveTitle.trim()) return;
-    const r = await fetch(`${API}/api/health-plans/${selectedPlanId}/objectives`, {
-      method: "POST",
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({health_plan_id:selectedPlanId,title:objectiveTitle}),
-    });
-    const json = await r.json();
-    if (!r.ok) { setError(json.detail || "تعذر حفظ الهدف"); return; }
-    setObjectiveTitle("");
-    await loadPlanDetails(selectedPlanId);
+    setError("");
+    try {
+      const r = await fetch(`${API}/api/health-plans/${selectedPlanId}/objectives`, {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({health_plan_id:selectedPlanId,title:objectiveTitle}),
+      });
+      const json = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(json.detail || "تعذر حفظ الهدف");
+      const newObjectiveId = json.data?.id || "";
+      setObjectiveTitle("");
+      if (newObjectiveId) {
+        const orphanActivities = activities.filter(a => !a.objective_id);
+        if (orphanActivities.length && objectives.length === 0) {
+          await Promise.all(orphanActivities.map(a => updateActivityObjective(a.id, newObjectiveId)));
+        }
+        setActivityObjectiveId(newObjectiveId);
+      }
+      await loadPlanDetails(selectedPlanId);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "تعذر حفظ الهدف");
+    }
   }
 
   async function createActivity() {
     if (!selectedPlanId || !activityTitle.trim()) return;
+    const objectiveId = activityObjectiveId || (objectives.length === 1 ? objectives[0].id : "");
+    if (!objectiveId) {
+      setError(objectives.length === 0 ? "أضف هدفًا تفصيليًا أولًا ثم اربط النشاط به." : "اختر الهدف التفصيلي الذي يرتبط به النشاط.");
+      return;
+    }
     setError("");
     try {
       const r = await fetch(`${API}/api/health-plans/${selectedPlanId}/activities`, {
@@ -303,7 +345,7 @@ export default function Home() {
         headers: {"Content-Type":"application/json"},
         body: JSON.stringify({
           health_plan_id:selectedPlanId,
-          objective_id:activityObjectiveId || null,
+          objective_id:objectiveId,
           title:activityTitle,
           responsible_person:activityResponsible || null,
           start_date:activityStart || null,
@@ -883,7 +925,17 @@ export default function Home() {
                           return (
                             <tr key={a.id} className="align-top hover:bg-slate-50/70">
                               <td className="px-3 py-4">
-                                <div className="min-w-[180px] font-bold leading-6 text-slate-800">{objective?.title || "غير مرتبط بهدف"}</div>
+                                <div className="min-w-[220px]">
+                                  <select
+                                    value={a.objective_id || ""}
+                                    onChange={e=>updateActivityObjective(a.id,e.target.value)}
+                                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-700 outline-none focus:border-blue-500"
+                                  >
+                                    <option value="">اختر الهدف التفصيلي</option>
+                                    {objectives.map((o:any)=><option key={o.id} value={o.id}>{o.title}</option>)}
+                                  </select>
+                                  {!a.objective_id && <div className="mt-1 text-[10px] font-bold text-amber-600">يجب ربط النشاط بهدف</div>}
+                                </div>
                               </td>
                               <td className="px-3 py-4">
                                 <div className="min-w-[160px] font-extrabold text-blue-700">{a.title}</div>

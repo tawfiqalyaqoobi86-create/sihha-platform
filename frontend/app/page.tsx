@@ -93,6 +93,8 @@ export default function Home() {
   const [allEvidence, setAllEvidence] = useState<any[]>([]);
   const [evidenceTarget, setEvidenceTarget] = useState<Record<string,string>>({});
   const [evidenceTargetId, setEvidenceTargetId] = useState<Record<string,string>>({});
+  const [aiSummary, setAiSummary] = useState<any>(null);
+  const [showAI, setShowAI] = useState(false);
   const [competition, setCompetition] = useState<any>(null);
   const SCHOOL_ID = "d088a83c-9619-4bc2-9c7e-02d9e5631617";
   const YEAR_ID = "49fbf490-53ec-4044-9b76-d856e9533ee8";
@@ -207,6 +209,13 @@ export default function Home() {
     if (!r.ok) { setError(json.detail || "تعذر حفظ النشاط"); return; }
     setActivityTitle(""); setActivityResponsible(""); setActivityStart(""); setActivityEnd("");
     await loadPlanDetails(selectedPlanId);
+  }
+
+  async function loadAI() {
+    const r=await fetch(API + "/api/ai/school-summary",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({school_id:SCHOOL_ID,academic_year_id:YEAR_ID,focus:"ملخص حالة المدرسة"})});
+    const json=await r.json();
+    if(!r.ok){setError(json.detail||"تعذر تشغيل المساعد الذكي");return;}
+    setAiSummary(json.summary);
   }
 
   async function linkHubEvidence(evidenceId: string) {
@@ -434,7 +443,8 @@ export default function Home() {
               <button onClick={()=>{setShowDashboard(!showDashboard); if(!showDashboard) loadDashboard();}} className="flex items-center gap-2 rounded-xl border bg-white px-4 py-2 text-sm font-bold"><BarChart3 size={17}/> لوحة القيادة</button>
               <button onClick={()=>{setShowReport(!showReport); if(!showReport) loadReport();}} className="flex items-center gap-2 rounded-xl border bg-white px-4 py-2 text-sm font-bold"><ClipboardList size={17}/> التقارير</button>
               <button onClick={()=>{setShowCompetition(!showCompetition); if(!showCompetition) loadCompetition();}} className="flex items-center gap-2 rounded-xl border bg-white px-4 py-2 text-sm font-bold"><ShieldCheck size={17}/> وضع المسابقة</button>
-              <button onClick={()=>{setShowEvidenceHub(!showEvidenceHub); if(!showEvidenceHub) loadEvidenceHub();}} className="flex items-center gap-2 rounded-xl border bg-white px-4 py-2 text-sm font-bold"><FileUp size={17}/> الأدلة</button><button
+              <button onClick={()=>{setShowEvidenceHub(!showEvidenceHub); if(!showEvidenceHub) loadEvidenceHub();}} className="flex items-center gap-2 rounded-xl border bg-white px-4 py-2 text-sm font-bold"><FileUp size={17}/> الأدلة</button>
+              <button onClick={()=>{setShowAI(!showAI); if(!showAI) loadAI();}} className="flex items-center gap-2 rounded-xl border bg-white px-4 py-2 text-sm font-bold"><HeartPulse size={17}/> المساعد الذكي</button><button
               onClick={() => { setShowPlans(!showPlans); if (!showPlans) loadPlans(); }}
               className="flex items-center gap-2 rounded-xl border bg-white px-4 py-2 text-sm font-bold"
             >
@@ -447,6 +457,20 @@ export default function Home() {
             </button>
             </div>
           </div>
+
+          {showAI && aiSummary && (
+            <div className="mb-4 rounded-2xl border-2 border-violet-200 bg-gradient-to-l from-violet-50 to-white p-5 shadow-sm">
+              <div className="mb-4 flex items-center justify-between"><div><h3 className="text-lg font-extrabold">مساعد صِحّة الذكي</h3><p className="text-xs text-slate-500">تحليل مبني على البيانات المسجلة في المنصة.</p></div><button onClick={loadAI} className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-bold text-white">تحليل جديد</button></div>
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                <div className="rounded-xl bg-white p-3 text-center"><b>{aiSummary.evaluation?.percentage??0}%</b><div className="text-xs text-slate-500">التقييم</div></div>
+                <div className="rounded-xl bg-white p-3 text-center"><b>{aiSummary.problems_count}</b><div className="text-xs text-slate-500">المشكلات</div></div>
+                <div className="rounded-xl bg-white p-3 text-center"><b>{aiSummary.plans_count}</b><div className="text-xs text-slate-500">الخطط</div></div>
+                <div className="rounded-xl bg-white p-3 text-center"><b>{aiSummary.innovations_count}</b><div className="text-xs text-slate-500">الابتكارات</div></div>
+              </div>
+              <div className="mt-4 rounded-xl border bg-white p-4"><b>أسئلة التحسين</b>{(aiSummary.questions??[]).map((q:string,i:number)=><div key={i} className="mt-2 text-sm">• {q}</div>)}</div>
+              <div className="mt-3 text-xs text-slate-500">{aiSummary.note}</div>
+            </div>
+          )}
 
           {showEvidenceHub && (
             <div className="mb-4 rounded-2xl border bg-white p-5 shadow-sm">

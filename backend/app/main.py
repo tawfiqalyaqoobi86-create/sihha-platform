@@ -2,6 +2,8 @@
 
 from fastapi import FastAPI
 
+from backend.app.api.schools import router as schools_router
+from backend.app.api.academic_years import router as academic_years_router
 from backend.app.api.components import router as components_router
 
 
@@ -16,6 +18,8 @@ app = FastAPI(
 # API Routes
 # =========================
 
+app.include_router(schools_router)
+app.include_router(academic_years_router)
 app.include_router(components_router)
 
 

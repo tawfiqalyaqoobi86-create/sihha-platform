@@ -69,6 +69,11 @@ export default function Home() {
   const [showProblems, setShowProblems] = useState(false);
   const [problemTitle, setProblemTitle] = useState("");
   const [problemDescription, setProblemDescription] = useState("");
+  const [plans, setPlans] = useState<any[]>([]);
+  const [showPlans, setShowPlans] = useState(false);
+  const [planTitle, setPlanTitle] = useState("");
+  const [planGoal, setPlanGoal] = useState("");
+  const [selectedProblemId, setSelectedProblemId] = useState("");
   const SCHOOL_ID = "d088a83c-9619-4bc2-9c7e-02d9e5631617";
   const YEAR_ID = "49fbf490-53ec-4044-9b76-d856e9533ee8";
 
@@ -89,6 +94,7 @@ export default function Home() {
 
   useEffect(() => {
     loadProblems().catch(() => {});
+    loadPlans().catch(() => {});
     fetch(`${API}/api/evaluations/school/${SCHOOL_ID}/year/${YEAR_ID}`)
       .then((r) => r.json())
       .then((json) => {
@@ -125,6 +131,32 @@ export default function Home() {
     : 0;
 
   const overallMax = totalMax || 341;
+
+  async function loadPlans() {
+    const r = await fetch(`${API}/api/health-plans/school/${SCHOOL_ID}/year/${YEAR_ID}`);
+    const json = await r.json();
+    setPlans(json.data ?? []);
+  }
+
+  async function createPlan() {
+    if (!selectedProblemId || !planTitle.trim() || !planGoal.trim()) return;
+    const r = await fetch(`${API}/api/health-plans/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        school_id: SCHOOL_ID,
+        academic_year_id: YEAR_ID,
+        problem_id: selectedProblemId,
+        title: planTitle,
+        main_goal: planGoal,
+      }),
+    });
+    const json = await r.json();
+    if (!r.ok) { setError(json.detail || "تعذر حفظ الخطة"); return; }
+    setPlanTitle("");
+    setPlanGoal("");
+    await loadPlans();
+  }
 
   async function loadProblems() {
     const r = await fetch(`${API}/api/health-problems/school/${SCHOOL_ID}/year/${YEAR_ID}`);
@@ -272,6 +304,11 @@ export default function Home() {
               <ToolbarButton icon={<BarChart3 size={17} />} text="تحليل النتائج" />
               <ToolbarButton icon={<Info size={17} />} text="معلومات المكون" />
               <ToolbarButton icon={<Search size={17} />} text="البحث" /><button
+              onClick={() => { setShowPlans(!showPlans); if (!showPlans) loadPlans(); }}
+              className="flex items-center gap-2 rounded-xl border bg-white px-4 py-2 text-sm font-bold"
+            >
+              <ClipboardList size={17} /> الخطط الصحية
+            </button><button
               onClick={() => { setShowProblems(!showProblems); if (!showProblems) loadProblems(); }}
               className="flex items-center gap-2 rounded-xl border bg-white px-4 py-2 text-sm font-bold"
             >
@@ -280,6 +317,34 @@ export default function Home() {
             </div>
           </div>
 
+          {showPlans && (
+            <div className="mb-4 rounded-2xl border bg-white p-5 shadow-sm">
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-extrabold">الخطة الصحية</h3>
+                  <p className="text-xs text-slate-500">تحويل المشكلة ذات الأولوية إلى هدف وخطة قابلة للتنفيذ.</p>
+                </div>
+                <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">{plans.length} خطة</span>
+              </div>
+              <div className="grid gap-3 md:grid-cols-[1fr_1fr_1fr_auto]">
+                <select value={selectedProblemId} onChange={e=>setSelectedProblemId(e.target.value)} className="rounded-xl border px-3 py-2">
+                  <option value="">اختر المشكلة</option>
+                  {problems.map(p=><option key={p.id} value={p.id}>{p.title}</option>)}
+                </select>
+                <input value={planTitle} onChange={e=>setPlanTitle(e.target.value)} placeholder="عنوان الخطة" className="rounded-xl border px-3 py-2 outline-none focus:border-blue-500" />
+                <input value={planGoal} onChange={e=>setPlanGoal(e.target.value)} placeholder="الهدف الرئيسي" className="rounded-xl border px-3 py-2 outline-none focus:border-blue-500" />
+                <button onClick={createPlan} className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-2 font-bold text-white"><Plus size={17}/> إنشاء</button>
+              </div>
+              <div className="mt-4 grid gap-2">
+                {plans.map(p=>(
+                  <div key={p.id} className="rounded-xl bg-slate-50 p-3">
+                    <div className="font-bold">{p.title}</div>
+                    <div className="text-xs text-slate-500">{p.main_goal}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {showProblems && (
             <div className="mb-4 rounded-2xl border bg-white p-5 shadow-sm">
               <div className="mb-4 flex items-center justify-between">

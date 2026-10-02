@@ -343,6 +343,20 @@ export default function Home() {
     await loadProblems();
   }
 
+  async function deleteEvidence(ev: any, itemId: string) {
+    if (!window.confirm("هل أنت متأكد من حذف هذا الشاهد؟ لا يمكن التراجع عن الحذف.")) return;
+    try {
+      const response = await fetch(API + "/api/evidence/" + ev.id, { method: "DELETE" });
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(json.detail || "تعذر حذف الشاهد");
+      await loadItemEvidence(itemId);
+      setSaveMessage("تم حذف الشاهد بنجاح");
+      setTimeout(() => setSaveMessage(""), 2500);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "تعذر حذف الشاهد");
+    }
+  }
+
   async function loadItemEvidence(itemId: string) {
     try {
       const response = await fetch(API + "/api/evidence/item/" + itemId);
@@ -750,18 +764,27 @@ export default function Home() {
                                     <div className="truncate font-bold text-slate-700">{ev.original_file_name || ev.title}</div>
                                     <div className="text-slate-400">{ev.created_at ? new Date(ev.created_at).toLocaleString("ar-OM") : ""}</div>
                                   </div>
-                                  {ev.signed_url ? (
-                                    <a
-                                      href={ev.signed_url}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      className="shrink-0 rounded-lg bg-blue-600 px-3 py-1.5 font-bold text-white"
+                                  <div className="flex shrink-0 items-center gap-2">
+                                    {ev.signed_url ? (
+                                      <a
+                                        href={ev.signed_url}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="rounded-lg bg-blue-600 px-3 py-1.5 font-bold text-white"
+                                      >
+                                        فتح الشاهد
+                                      </a>
+                                    ) : (
+                                      <span className="text-slate-400">الرابط غير متاح</span>
+                                    )}
+                                    <button
+                                      type="button"
+                                      onClick={() => deleteEvidence(ev, item.id)}
+                                      className="rounded-lg bg-red-50 px-3 py-1.5 font-bold text-red-700 hover:bg-red-100"
                                     >
-                                      فتح الشاهد
-                                    </a>
-                                  ) : (
-                                    <span className="text-slate-400">الرابط غير متاح</span>
-                                  )}
+                                      حذف
+                                    </button>
+                                  </div>
                                 </div>
                               ))}
                             </div>

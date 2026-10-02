@@ -3,6 +3,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from backend.app.core.supabase import supabase
+from backend.app.services.audit import audit
 
 router = APIRouter(prefix="/api/health-plans", tags=["Health Plans"])
 
@@ -80,6 +81,7 @@ def create_plan(payload: PlanRequest):
         )
         if not row.data:
             raise RuntimeError("تعذر حفظ الخطة الصحية")
+        audit("create", "health_plan", row.data[0]["id"], payload.school_id, details={"title": payload.title, "problem_id": payload.problem_id})
 
         supabase.table("health_problems").update({"status": "planned"}).eq("id", payload.problem_id).execute()
 
@@ -113,6 +115,7 @@ def create_objective(plan_id: str, payload: ObjectiveRequest):
         row = supabase.table("objectives").insert(data).execute()
         if not row.data:
             raise RuntimeError("تعذر حفظ الهدف")
+        audit("create", "objective", row.data[0]["id"], details={"health_plan_id": plan_id, "title": payload.title})
         return {"success": True, "data": row.data[0]}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"حدث خطأ أثناء حفظ الهدف: {str(e)}")
@@ -141,6 +144,7 @@ def create_activity(plan_id: str, payload: ActivityRequest):
         row = supabase.table("activities").insert(data).execute()
         if not row.data:
             raise RuntimeError("تعذر حفظ النشاط")
+        audit("create", "activity", row.data[0]["id"], details={"health_plan_id": plan_id, "title": payload.title})
         return {"success": True, "data": row.data[0]}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"حدث خطأ أثناء حفظ النشاط: {str(e)}")

@@ -2,6 +2,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from backend.app.core.supabase import supabase
+from backend.app.services.audit import audit
 
 router = APIRouter(prefix="/api/partnerships", tags=["Partnerships & Twinning"])
 
@@ -45,7 +46,9 @@ def list_partners():
 def create_partner(payload: PartnerRequest):
     try:
         r=supabase.table("partners").insert(payload.model_dump(exclude_none=True)).execute()
-        return {"success":True,"data":r.data[0] if r.data else None}
+        result=r.data[0] if r.data else None
+        audit("create", "partner", result["id"] if result else None, details={"name": payload.name})
+        return {"success":True,"data":result}
     except Exception as e: raise HTTPException(status_code=500,detail=f"تعذر حفظ الشريك: {e}")
 
 @router.get("/school/{school_id}/year/{academic_year_id}")
@@ -60,12 +63,16 @@ def list_school_partnerships(school_id: str, academic_year_id: str):
 def create_school_partnership(payload: SchoolPartnerRequest):
     try:
         r=supabase.table("school_partners").insert(payload.model_dump(exclude_none=True)).execute()
-        return {"success":True,"data":r.data[0] if r.data else None}
+        result=r.data[0] if r.data else None
+        audit("create", "school_partner", result["id"] if result else None, payload.school_id, details={"partner_id": payload.partner_id})
+        return {"success":True,"data":result}
     except Exception as e: raise HTTPException(status_code=500,detail=f"تعذر حفظ الشراكة: {e}")
 
 @router.post("/twinning")
 def create_twinning(payload: TwinningRequest):
     try:
         r=supabase.table("school_twinning").insert(payload.model_dump(exclude_none=True)).execute()
-        return {"success":True,"data":r.data[0] if r.data else None}
+        result=r.data[0] if r.data else None
+        audit("create", "school_twinning", result["id"] if result else None, payload.school_id, details={"partner_school_name": payload.partner_school_name})
+        return {"success":True,"data":result}
     except Exception as e: raise HTTPException(status_code=500,detail=f"تعذر حفظ التوأمة: {e}")

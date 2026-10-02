@@ -1044,15 +1044,15 @@ export default function Home() {
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <div className="text-xs font-bold text-slate-500">مؤشر جاهزية الملف <span className="font-normal">(داخلي للمنصة)</span></div>
-                    <div className="mt-1 text-3xl font-extrabold text-blue-700">${competition.metrics?.overall_readiness ?? 0}%</div>
+                    <div className="mt-1 text-3xl font-extrabold text-blue-700">{competition.metrics?.overall_readiness ?? 0}%</div>
                   </div>
                   <div className="min-w-[220px] flex-1">
                     <div className="mb-1 flex justify-between text-xs font-bold text-slate-500">
                       <span>اكتمال الملف</span>
-                      <span>${competition.metrics?.overall_readiness ?? 0}%</span>
+                      <span>{competition.metrics?.overall_readiness ?? 0}%</span>
                     </div>
                     <div className="h-3 overflow-hidden rounded-full bg-slate-100">
-                      <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: ${Math.min(Number(competition.metrics?.overall_readiness ?? 0), 100) + "%" }} />
+                      <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: Math.min(Number(competition.metrics?.overall_readiness ?? 0), 100) + "%" }} />
                     </div>
                   </div>
                 </div>
@@ -1063,12 +1063,12 @@ export default function Home() {
 
               <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                 {[
-                  ["اكتمال التقييم", ${competition.metrics?.evaluation_completion ?? 0, (${competition.evaluation?.completed_items ?? 0) + " / " + (${competition.evaluation?.total_items ?? 0) + " بند"],
-                  ["تغطية الشواهد", ${competition.metrics?.evidence_coverage ?? 0, (${competition.counts?.evidence ?? 0) + " شاهد موثق"],
-                  ["اكتمال الخطط", ${competition.metrics?.plan_completion ?? 0, (${competition.counts?.plans ?? 0) + " خطة"],
-                  ["تنفيذ الأنشطة", ${competition.metrics?.execution ?? 0, (${competition.counts?.activities ?? 0) + " نشاط"],
-                  ["توثيق الأنشطة", ${competition.metrics?.activity_documentation ?? 0, "أنشطة مرتبطة بشواهد"],
-                  ["الابتكار والشراكة", ${competition.metrics?.innovation_partnership ?? 0, (${competition.counts?.innovations ?? 0) + " ابتكار • " + ((${competition.counts?.partnerships ?? 0) + (${competition.counts?.twinning ?? 0)) + " شراكة/توأمة"],
+                  ["اكتمال التقييم", competition.metrics?.evaluation_completion ?? 0, (competition.evaluation?.completed_items ?? 0) + " / " + (competition.evaluation?.total_items ?? 0) + " بند"],
+                  ["تغطية الشواهد", competition.metrics?.evidence_coverage ?? 0, (competition.counts?.evidence ?? 0) + " شاهد موثق"],
+                  ["اكتمال الخطط", competition.metrics?.plan_completion ?? 0, (competition.counts?.plans ?? 0) + " خطة"],
+                  ["تنفيذ الأنشطة", competition.metrics?.execution ?? 0, (competition.counts?.activities ?? 0) + " نشاط"],
+                  ["توثيق الأنشطة", competition.metrics?.activity_documentation ?? 0, "أنشطة مرتبطة بشواهد"],
+                  ["الابتكار والشراكة", competition.metrics?.innovation_partnership ?? 0, (competition.counts?.innovations ?? 0) + " ابتكار • " + ((competition.counts?.partnerships ?? 0) + (competition.counts?.twinning ?? 0)) + " شراكة/توأمة"],
                 ].map(([label, value, note]) => (
                   <div key={String(label)} className="rounded-2xl border bg-white p-4">
                     <div className="flex items-center justify-between gap-2">
@@ -1087,7 +1087,7 @@ export default function Home() {
                 <div className="rounded-2xl border bg-white p-4">
                   <div className="mb-3 flex items-center justify-between">
                     <b>الصورة التشغيلية</b>
-                    <span className="rounded-full bg-amber-50 px-3 py-1 text-[11px] font-bold text-amber-700">${competition.counts?.problems ?? 0} مشكلة</span>
+                    <span className="rounded-full bg-amber-50 px-3 py-1 text-[11px] font-bold text-amber-700">{competition.counts?.problems ?? 0} مشكلة</span>
                   </div>
                   <div className="space-y-2 text-sm">
                     {(competition.problems ?? []).slice(0, 5).map((p:any) => (
@@ -1103,7 +1103,7 @@ export default function Home() {
                 <div className="rounded-2xl border bg-white p-4">
                   <div className="mb-3 flex items-center justify-between">
                     <b>أبرز الخطط</b>
-                    <span className="rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-bold text-emerald-700">${competition.counts?.plans ?? 0} خطة</span>
+                    <span className="rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-bold text-emerald-700">{competition.counts?.plans ?? 0} خطة</span>
                   </div>
                   <div className="space-y-2 text-sm">
                     {(competition.plans ?? []).slice(0, 5).map((p:any) => (
@@ -1120,7 +1120,7 @@ export default function Home() {
               <div className="mt-4 rounded-2xl border bg-white p-4">
                 <div className="mb-3 flex items-center justify-between">
                   <b>الابتكار والشراكة المجتمعية</b>
-                  <span className="rounded-full bg-violet-50 px-3 py-1 text-[11px] font-bold text-violet-700">${competition.counts?.innovations ?? 0} + ${competition.counts?.partnerships ?? 0} + ${competition.counts?.twinning ?? 0} سجل</span>
+                  <span className="rounded-full bg-violet-50 px-3 py-1 text-[11px] font-bold text-violet-700">{(competition.counts?.innovations ?? 0) + (competition.counts?.partnerships ?? 0) + (competition.counts?.twinning ?? 0)} سجل</span>
                 </div>
                 <div className="grid gap-2 md:grid-cols-2">
                   {(competition.innovations ?? []).slice(0, 4).map((i:any) => (

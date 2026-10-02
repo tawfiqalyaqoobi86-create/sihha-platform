@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 
 from fastapi import APIRouter, HTTPException
 from backend.app.core.supabase import supabase
@@ -15,7 +15,9 @@ def get_components():
         response = (
             supabase
             .table("components")
-            .select("id,code,name,description,official_total_score,sort_order")
+            .select(
+                "id,code,name,description,official_total_score,sort_order"
+            )
             .order("sort_order")
             .execute()
         )
@@ -39,7 +41,9 @@ def get_component(component_id: str):
         response = (
             supabase
             .table("components")
-            .select("id,code,name,description,official_total_score,sort_order")
+            .select(
+                "id,code,name,description,official_total_score,sort_order"
+            )
             .eq("id", component_id)
             .single()
             .execute()
@@ -60,6 +64,10 @@ def get_component(component_id: str):
 @router.get("/{component_id}/evaluation-items")
 def get_component_evaluation_items(component_id: str):
     try:
+        # ------------------------------------------------
+        # 1. جلب المكون
+        # ------------------------------------------------
+
         component = (
             supabase
             .table("components")
@@ -69,16 +77,25 @@ def get_component_evaluation_items(component_id: str):
             .execute()
         )
 
+        # ------------------------------------------------
+        # 2. جلب المؤشرات
+        # ------------------------------------------------
+
         indicators = (
             supabase
             .table("indicators")
-            .select("id,component_id,code,name,description,sort_order")
+            .select(
+                "id,component_id,code,name,description,sort_order"
+            )
             .eq("component_id", component_id)
             .order("sort_order")
             .execute()
         )
 
-        indicator_ids = [row["id"] for row in indicators.data]
+        indicator_ids = [
+            row["id"]
+            for row in indicators.data
+        ]
 
         if not indicator_ids:
             return {
@@ -88,43 +105,108 @@ def get_component_evaluation_items(component_id: str):
                 "items": [],
             }
 
+        # ------------------------------------------------
+        # 3. جلب بنود التقييم
+        # ------------------------------------------------
+
         items = (
             supabase
             .table("evaluation_items")
             .select(
-                "id,indicator_id,item_number,code,title,description,max_score,sort_order"
+                "id,"
+                "indicator_id,"
+                "item_number,"
+                "code,"
+                "title,"
+                "description,"
+                "max_score,"
+                "sort_order"
             )
             .in_("indicator_id", indicator_ids)
             .order("sort_order")
             .execute()
         )
 
-        item_ids = [row["id"] for row in items.data]
+        item_ids = [
+            row["id"]
+            for row in items.data
+        ]
+
+        # ------------------------------------------------
+        # 4. جلب مصادر الأدلة
+        # ------------------------------------------------
 
         sources_by_item = {}
 
         if item_ids:
+
             sources = (
                 supabase
                 .table("evaluation_sources")
-                .select("id,evaluation_item_id,source_name,source_description,sort_order,created_at")
-                .in_("evaluation_item_id", item_ids)
-                .order("created_at")
+                .select(
+                    "id,"
+                    "evaluation_item_id,"
+                    "source_name,"
+                    "source_description,"
+                    "sort_order,"
+                    "created_at"
+                )
+                .in_(
+                    "evaluation_item_id",
+                    item_ids
+                )
+                .order("sort_order")
                 .execute()
             )
 
+            # ------------------------------------------------
+            # 5. تنظيم المصادر حسب بند التقييم
+            # ------------------------------------------------
+
             for source in sources.data:
+
+                normalized_source = {
+                    "id": source["id"],
+                    "evaluation_item_id": source[
+                        "evaluation_item_id"
+                    ],
+                    "source_type": "official",
+                    "title": source["source_name"],
+                    "description": source[
+                        "source_description"
+                    ],
+                    "sort_order": source["sort_order"],
+                    "created_at": source["created_at"],
+                }
+
                 sources_by_item.setdefault(
-                    source["evaluation_item_id"], []
-                ).append(source)
+                    source["evaluation_item_id"],
+                    []
+                ).append(
+                    normalized_source
+                )
+
+        # ------------------------------------------------
+        # 6. دمج مصادر الأدلة مع بنود التقييم
+        # ------------------------------------------------
 
         enriched_items = []
 
         for item in items.data:
-            enriched_items.append({
-                **item,
-                "sources": sources_by_item.get(item["id"], []),
-            })
+
+            enriched_items.append(
+                {
+                    **item,
+                    "sources": sources_by_item.get(
+                        item["id"],
+                        []
+                    ),
+                }
+            )
+
+        # ------------------------------------------------
+        # 7. النتيجة النهائية
+        # ------------------------------------------------
 
         return {
             "success": True,
@@ -134,7 +216,11 @@ def get_component_evaluation_items(component_id: str):
         }
 
     except Exception as e:
+
         raise HTTPException(
             status_code=500,
-            detail=f"حدث خطأ أثناء جلب بنود تقييم المكون: {str(e)}",
+            detail=(
+                "حدث خطأ أثناء جلب بنود تقييم المكون: "
+                f"{str(e)}"
+            ),
         )

@@ -65,6 +65,8 @@ export default function Home() {
   const [saveMessage, setSaveMessage] = useState("");
   const [uploading, setUploading] = useState<Record<string, boolean>>({});
   const [evidenceCount, setEvidenceCount] = useState<Record<string, number>>({});
+  const [itemEvidence, setItemEvidence] = useState<Record<string, any[]>>({});
+  const [showEvidenceFor, setShowEvidenceFor] = useState<string | null>(null);
   const [problems, setProblems] = useState<any[]>([]);
   const [showProblems, setShowProblems] = useState(false);
   const [problemTitle, setProblemTitle] = useState("");
@@ -341,6 +343,20 @@ export default function Home() {
     await loadProblems();
   }
 
+  async function loadItemEvidence(itemId: string) {
+    try {
+      const response = await fetch(API + "/api/evidence/item/" + itemId);
+      const json = await response.json();
+      if (!response.ok) throw new Error(json.detail || "تعذر جلب الشواهد");
+      const data = json.data ?? [];
+      setItemEvidence((v) => ({ ...v, [itemId]: data }));
+      setEvidenceCount((v) => ({ ...v, [itemId]: data.length }));
+      setShowEvidenceFor(itemId);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "تعذر جلب الشواهد");
+    }
+  }
+
   async function uploadEvidence(item: Item, file: File) {
     setUploading((v) => ({ ...v, [item.id]: true }));
     setError("");
@@ -361,7 +377,7 @@ export default function Home() {
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.detail || "تعذر رفع الشاهد");
 
-      setEvidenceCount((v) => ({ ...v, [item.id]: (v[item.id] || 0) + 1 }));
+      await loadItemEvidence(item.id);
       setSaveMessage("تم رفع الشاهد بنجاح");
       setTimeout(() => setSaveMessage(""), 2500);
     } catch (e) {
@@ -718,8 +734,38 @@ export default function Home() {
                         {uploading[item.id] ? "جاري الرفع..." : "إضافة شاهد"}
                       </button>
                       {evidenceCount[item.id] > 0 && (
-                        <div className="mb-2 text-xs font-bold text-emerald-700">
-                          {evidenceCount[item.id]} شاهد مرفوع
+                        <div className="mb-2">
+                          <button
+                            type="button"
+                            onClick={() => loadItemEvidence(item.id)}
+                            className="text-xs font-bold text-emerald-700 underline underline-offset-2 hover:text-emerald-900"
+                          >
+                            {evidenceCount[item.id]} شاهد مرفوع — اضغط للعرض
+                          </button>
+                          {showEvidenceFor === item.id && (
+                            <div className="mt-2 space-y-2 rounded-xl border border-emerald-200 bg-emerald-50 p-2">
+                              {(itemEvidence[item.id] ?? []).map((ev) => (
+                                <div key={ev.id} className="flex items-center justify-between gap-2 rounded-lg bg-white px-3 py-2 text-xs">
+                                  <div className="min-w-0">
+                                    <div className="truncate font-bold text-slate-700">{ev.original_file_name || ev.title}</div>
+                                    <div className="text-slate-400">{ev.created_at ? new Date(ev.created_at).toLocaleString("ar-OM") : ""}</div>
+                                  </div>
+                                  {ev.signed_url ? (
+                                    <a
+                                      href={ev.signed_url}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="shrink-0 rounded-lg bg-blue-600 px-3 py-1.5 font-bold text-white"
+                                    >
+                                      فتح الشاهد
+                                    </a>
+                                  ) : (
+                                    <span className="text-slate-400">الرابط غير متاح</span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       )}
                       <textarea

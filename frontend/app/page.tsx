@@ -61,6 +61,8 @@ export default function Home() {
   const [itemsLoading, setItemsLoading] = useState(false);
   const [error, setError] = useState("");
   const [saveMessage, setSaveMessage] = useState("");
+  const [uploading, setUploading] = useState<Record<string, boolean>>({});
+  const [evidenceCount, setEvidenceCount] = useState<Record<string, number>>({});
   const SCHOOL_ID = "d088a83c-9619-4bc2-9c7e-02d9e5631617";
   const YEAR_ID = "49fbf490-53ec-4044-9b76-d856e9533ee8";
 
@@ -116,6 +118,36 @@ export default function Home() {
     : 0;
 
   const overallMax = totalMax || 341;
+
+  async function uploadEvidence(item: Item, file: File) {
+    setUploading((v) => ({ ...v, [item.id]: true }));
+    setError("");
+    try {
+      const form = new FormData();
+      form.append("school_id", SCHOOL_ID);
+      form.append("academic_year_id", YEAR_ID);
+      form.append("evaluation_item_id", item.id);
+      form.append("title", file.name);
+      form.append("description", "شاهد مرفوع من شاشة التقييم");
+      form.append("file", file);
+
+      const response = await fetch(`${API}/api/evidence/upload`, {
+        method: "POST",
+        body: form,
+      });
+
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.detail || "تعذر رفع الشاهد");
+
+      setEvidenceCount((v) => ({ ...v, [item.id]: (v[item.id] || 0) + 1 }));
+      setSaveMessage("تم رفع الشاهد بنجاح");
+      setTimeout(() => setSaveMessage(""), 2500);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "حدث خطأ أثناء رفع الشاهد");
+    } finally {
+      setUploading((v) => ({ ...v, [item.id]: false }));
+    }
+  }
 
   async function saveCurrentComponent() {
     if (!selected) return;
@@ -258,9 +290,30 @@ export default function Home() {
 
                     <div>
                       <label className="mb-1 block text-xs text-slate-500">الشواهد والملاحظات</label>
-                      <button className="mb-2 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-blue-300 bg-blue-50 px-3 py-2 text-sm text-blue-700">
-                        <FileUp size={16} /> إضافة شاهد
+                      <input
+                        id={`file-${item.id}`}
+                        type="file"
+                        className="hidden"
+                        accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.webp,.mp4"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) uploadEvidence(item, file);
+                          e.currentTarget.value = "";
+                        }}
+                      />
+                      <button
+                        onClick={() => document.getElementById(`file-${item.id}`)?.click()}
+                        disabled={uploading[item.id]}
+                        className="mb-2 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-blue-300 bg-blue-50 px-3 py-2 text-sm text-blue-700 disabled:opacity-50"
+                      >
+                        <FileUp size={16} />
+                        {uploading[item.id] ? "جاري الرفع..." : "إضافة شاهد"}
                       </button>
+                      {evidenceCount[item.id] > 0 && (
+                        <div className="mb-2 text-xs font-bold text-emerald-700">
+                          {evidenceCount[item.id]} شاهد مرفوع
+                        </div>
+                      )}
                       <textarea
                         rows={2}
                         value={notes[item.id] || ""}

@@ -193,27 +193,36 @@ export default function Home() {
 
   async function loadPlanDetails(planId: string) {
     setSelectedPlanId(planId);
-    const [o, a] = await Promise.all([
-      fetch(`${API}/api/health-plans/${planId}/objectives`).then(r => r.json()),
-      fetch(`${API}/api/health-plans/${planId}/activities`).then(r => r.json()),
-    ]);
-    const loadedActivities = a.data ?? [];
-    setObjectives(o.data ?? []);
-    setActivities(loadedActivities);
+    setError("");
+    try {
+      const [oResponse, aResponse] = await Promise.all([
+        fetch(`${API}/api/health-plans/${planId}/objectives`),
+        fetch(`${API}/api/health-plans/${planId}/activities`),
+      ]);
+      const o = await oResponse.json().catch(() => ({}));
+      const a = await aResponse.json().catch(() => ({}));
+      if (!oResponse.ok) throw new Error(o.detail || "تعذر تحميل أهداف الخطة");
+      if (!aResponse.ok) throw new Error(a.detail || "تعذر تحميل أنشطة الخطة");
 
-    // تحميل المكونات المرتبطة فعليًا بكل نشاط عند فتح الخطة
-    const componentEntries = await Promise.all(
-      loadedActivities.map(async (activity: any) => {
-        try {
-          const response = await fetch(`${API}/api/health-plans/activities/${activity.id}/components`);
-          const json = await response.json();
-          return [activity.id, json.data ?? []] as const;
-        } catch {
-          return [activity.id, []] as const;
-        }
-      })
-    );
-    setActivityComponents(Object.fromEntries(componentEntries));
+      const loadedActivities = a.data ?? [];
+      setObjectives(o.data ?? []);
+      setActivities(loadedActivities);
+
+      const componentEntries = await Promise.all(
+        loadedActivities.map(async (activity: any) => {
+          try {
+            const response = await fetch(`${API}/api/health-plans/activities/${activity.id}/components`);
+            const json = await response.json();
+            return [activity.id, json.data ?? []] as const;
+          } catch {
+            return [activity.id, []] as const;
+          }
+        })
+      );
+      setActivityComponents(Object.fromEntries(componentEntries));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "تعذر تحميل تفاصيل الخطة");
+    }
   }
   async function createObjective() {
     if (!selectedPlanId || !objectiveTitle.trim()) return;
@@ -230,24 +239,37 @@ export default function Home() {
 
   async function createActivity() {
     if (!selectedPlanId || !activityTitle.trim()) return;
-    const r = await fetch(`${API}/api/health-plans/${selectedPlanId}/activities`, {
-      method: "POST",
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({
-        health_plan_id:selectedPlanId,
-        title:activityTitle,
-        responsible_person:activityResponsible || null,
-        start_date:activityStart || null,
-        end_date:activityEnd || null,
-        status:"planned"
-      }),
-    });
-    const json = await r.json();
-    if (!r.ok) { setError(json.detail || "تعذر حفظ النشاط"); return; }
-    setActivityTitle(""); setActivityResponsible(""); setActivityStart(""); setActivityEnd("");
-    await loadPlanDetails(selectedPlanId);
+    setError("");
+    try {
+      const r = await fetch(`${API}/api/health-plans/${selectedPlanId}/activities`, {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({
+          health_plan_id:selectedPlanId,
+          title:activityTitle,
+          responsible_person:activityResponsible || null,
+          start_date:activityStart || null,
+          end_date:activityEnd || null,
+          status:"planned"
+        }),
+      });
+      const json = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(json.detail || "تعذر حفظ النشاط");
+      if (json.data) {
+        setActivities((current) => [...current, json.data]);
+        setActivityComponents((current) => ({...current, [json.data.id]: []}));
+      }
+      setActivityTitle("");
+      setActivityResponsible("");
+      setActivityStart("");
+      setActivityEnd("");
+      await loadPlanDetails(selectedPlanId);
+      setSaveMessage("تم إضافة النشاط بنجاح");
+      setTimeout(() => setSaveMessage(""), 2500);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "تعذر حفظ النشاط");
+    }
   }
-
   async function loadAI() {
     const r=await fetch(API + "/api/ai/school-summary",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({school_id:SCHOOL_ID,academic_year_id:YEAR_ID,focus:"ملخص حالة المدرسة"})});
     const json=await r.json();

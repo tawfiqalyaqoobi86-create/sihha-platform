@@ -819,7 +819,7 @@ export default function Home() {
                               <div className="rounded-xl bg-slate-50 p-3">
                                 <div className="text-[11px] font-bold text-slate-400">فترة التنفيذ</div>
                                 <div className="mt-1 font-bold text-slate-700">
-                                  {formatDate(a.start_date)} <span className="mx-1 text-blue-500">←</span> {formatDate(a.end_date)}
+                                  {formatDate(a.start_date)} <span className="mx-1 text-blue-500">→</span> {formatDate(a.end_date)}
                                 </div>
                               </div>
                             </div>
@@ -866,12 +866,6 @@ export default function Home() {
                                     ))
                                   : <span className="text-xs text-slate-400">لم يتم اختيار أدلة بعد</span>}
                               </div>
-                            </div>
-
-                            <div className="border-t border-slate-100 px-4 py-3 text-left">
-                              <button type="button" className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-500">
-                                تعديل النشاط
-                              </button>
                             </div>
                           </div>
                         );

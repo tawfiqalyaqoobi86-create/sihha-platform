@@ -85,7 +85,7 @@ export default function Home() {
   const [activityComponents, setActivityComponents] = useState<Record<string,string[]>>({});
   const [activityEvidence, setActivityEvidence] = useState<Record<string,any[]>>({});
   const [showDashboard, setShowDashboard] = useState(false);
-  const [dashboard, setDashboard] = useState({ problems: 0, plans: 0, objectives: 0, activities: 0, evidence: 0 });
+  const [dashboard, setDashboard] = useState({ problems: 0, plans: 0, objectives: 0, activities: 0, evidence: 0, score: 0, percentage: 0, components: [] as any[] });
   const SCHOOL_ID = "d088a83c-9619-4bc2-9c7e-02d9e5631617";
   const YEAR_ID = "49fbf490-53ec-4044-9b76-d856e9533ee8";
 
@@ -215,7 +215,8 @@ export default function Home() {
       ]);
       objectives += o.data?.length ?? 0; activities += a.data?.length ?? 0;
     }
-    setDashboard({problems:ps.length,plans:pls.length,objectives,activities,evidence:Object.values(evidenceCount).reduce((a,b)=>a+b,0)});
+    const ev=await fetch(API + "/api/evaluations/school/" + SCHOOL_ID + "/year/" + YEAR_ID + "/summary").then(r=>r.json());
+    setDashboard({problems:ps.length,plans:pls.length,objectives,activities,evidence:Object.values(evidenceCount).reduce((a,b)=>a+b,0),score:ev.total_score??0,percentage:ev.percentage??0,components:ev.components??[]});
   }
 
   async function loadPlans() {
@@ -409,6 +410,12 @@ export default function Home() {
               <div className="mb-4 flex items-center justify-between"><div><h3 className="text-lg font-extrabold">لوحة قيادة صِحّة</h3><p className="text-xs text-slate-500">ملخص رحلة المدرسة من المشكلة إلى التنفيذ.</p></div><button onClick={loadDashboard} className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white">تحديث</button></div>
               <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
                 {[["المشكلات",dashboard.problems],["الخطط",dashboard.plans],["الأهداف",dashboard.objectives],["الأنشطة",dashboard.activities],["الشواهد",dashboard.evidence]].map(([label,value])=><div key={String(label)} className="rounded-2xl bg-slate-50 p-4 text-center"><div className="text-2xl font-extrabold text-blue-700">{value}</div><div className="mt-1 text-xs font-bold text-slate-500">{label}</div></div>)}
+              </div>
+              <div className="mt-4 rounded-2xl border bg-white p-4">
+                <div className="mb-3 flex items-center justify-between"><b>التقييم العام للمكونات السبعة</b><span className="font-extrabold text-blue-700">{dashboard.score} درجة • {dashboard.percentage}%</span></div>
+                <div className="grid gap-2 md:grid-cols-2">
+                  {dashboard.components.map((c:any)=><div key={c.id} className="rounded-xl bg-slate-50 p-3"><div className="flex justify-between text-sm font-bold"><span>{c.code} - {c.name}</span><span>{c.score} / {c.max_score}</span></div><div className="mt-2 h-2 rounded-full bg-white"><div className="h-full rounded-full bg-emerald-500" style={{width:c.percentage+"%"}} /></div><div className="mt-1 text-left text-xs text-slate-500">{c.percentage}%</div></div>)}
+                </div>
               </div>
               <div className="mt-4 rounded-2xl bg-gradient-to-l from-blue-50 to-emerald-50 p-4 text-center"><div className="font-extrabold">المسار التشغيلي</div><div className="mt-2 text-sm font-bold text-slate-600">المشكلة ← الأولوية ← الخطة ← الهدف ← النشاط ← الشاهد ← النتيجة ← الأثر</div></div>
             </div>

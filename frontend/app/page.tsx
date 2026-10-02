@@ -845,6 +845,20 @@ export default function Home() {
                     <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">{activities.length} نشاط</span>
                   </div>
 
+                  <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <div>
+                        <h5 className="font-extrabold text-slate-800">الأهداف التفصيلية</h5>
+                        <p className="mt-1 text-xs text-slate-500">أضف الأهداف هنا، ثم اربط كل نشاط بالهدف المناسب.</p>
+                      </div>
+                      <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600 ring-1 ring-slate-200">{objectives.length} هدف</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <input value={objectiveTitle} onChange={e=>setObjectiveTitle(e.target.value)} placeholder="الهدف التفصيلي" className="min-w-0 flex-1 rounded-xl border bg-white px-3 py-2" />
+                      <button onClick={createObjective} className="rounded-xl bg-emerald-600 px-4 font-bold text-white">إضافة</button>
+                    </div>
+                  </div>
+
                   <div className="mb-4 rounded-2xl border border-blue-100 bg-blue-50/50 p-4">
                     <div className="mb-3 flex items-center gap-2 font-bold text-blue-900">
                       <Plus size={17} />
@@ -878,20 +892,6 @@ export default function Home() {
                       <button onClick={createActivity} className="rounded-xl bg-blue-600 px-4 py-2.5 font-bold text-white shadow-sm hover:bg-blue-700">
                         إضافة
                       </button>
-                    </div>
-                  </div>
-
-                  <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <div className="mb-3 flex items-center justify-between gap-3">
-                      <div>
-                        <h5 className="font-extrabold text-slate-800">الأهداف التفصيلية</h5>
-                        <p className="mt-1 text-xs text-slate-500">أضف الأهداف هنا، ثم اربط كل نشاط بالهدف المناسب.</p>
-                      </div>
-                      <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600 ring-1 ring-slate-200">{objectives.length} هدف</span>
-                    </div>
-                    <div className="flex gap-2">
-                      <input value={objectiveTitle} onChange={e=>setObjectiveTitle(e.target.value)} placeholder="الهدف التفصيلي" className="min-w-0 flex-1 rounded-xl border bg-white px-3 py-2" />
-                      <button onClick={createObjective} className="rounded-xl bg-emerald-600 px-4 font-bold text-white">إضافة</button>
                     </div>
                   </div>
 

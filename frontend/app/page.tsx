@@ -84,6 +84,8 @@ export default function Home() {
   const [activityEnd, setActivityEnd] = useState("");
   const [activityComponents, setActivityComponents] = useState<Record<string,string[]>>({});
   const [activityEvidence, setActivityEvidence] = useState<Record<string,any[]>>({});
+  const [showDashboard, setShowDashboard] = useState(false);
+  const [dashboard, setDashboard] = useState({ problems: 0, plans: 0, objectives: 0, activities: 0, evidence: 0 });
   const SCHOOL_ID = "d088a83c-9619-4bc2-9c7e-02d9e5631617";
   const YEAR_ID = "49fbf490-53ec-4044-9b76-d856e9533ee8";
 
@@ -197,6 +199,23 @@ export default function Home() {
     if (!r.ok) { setError(json.detail || "تعذر حفظ النشاط"); return; }
     setActivityTitle(""); setActivityResponsible(""); setActivityStart(""); setActivityEnd("");
     await loadPlanDetails(selectedPlanId);
+  }
+
+  async function loadDashboard() {
+    const [pr, pl] = await Promise.all([
+      fetch(API + "/api/health-problems/school/" + SCHOOL_ID + "/year/" + YEAR_ID).then(r=>r.json()),
+      fetch(API + "/api/health-plans/school/" + SCHOOL_ID + "/year/" + YEAR_ID).then(r=>r.json())
+    ]);
+    const ps=pr.data??[], pls=pl.data??[];
+    let objectives=0, activities=0;
+    for (const p of pls) {
+      const [o,a]=await Promise.all([
+        fetch(API + "/api/health-plans/" + p.id + "/objectives").then(r=>r.json()),
+        fetch(API + "/api/health-plans/" + p.id + "/activities").then(r=>r.json())
+      ]);
+      objectives += o.data?.length ?? 0; activities += a.data?.length ?? 0;
+    }
+    setDashboard({problems:ps.length,plans:pls.length,objectives,activities,evidence:Object.values(evidenceCount).reduce((a,b)=>a+b,0)});
   }
 
   async function loadPlans() {
@@ -370,7 +389,8 @@ export default function Home() {
               <ToolbarButton icon={<ClipboardList size={17} />} text="بنود التقييم" active />
               <ToolbarButton icon={<BarChart3 size={17} />} text="تحليل النتائج" />
               <ToolbarButton icon={<Info size={17} />} text="معلومات المكون" />
-              <ToolbarButton icon={<Search size={17} />} text="البحث" /><button
+              <ToolbarButton icon={<Search size={17} />} text="البحث" />
+              <button onClick={()=>{setShowDashboard(!showDashboard); if(!showDashboard) loadDashboard();}} className="flex items-center gap-2 rounded-xl border bg-white px-4 py-2 text-sm font-bold"><BarChart3 size={17}/> لوحة القيادة</button><button
               onClick={() => { setShowPlans(!showPlans); if (!showPlans) loadPlans(); }}
               className="flex items-center gap-2 rounded-xl border bg-white px-4 py-2 text-sm font-bold"
             >
@@ -383,6 +403,16 @@ export default function Home() {
             </button>
             </div>
           </div>
+
+          {showDashboard && (
+            <div className="mb-4 rounded-2xl border bg-white p-5 shadow-sm">
+              <div className="mb-4 flex items-center justify-between"><div><h3 className="text-lg font-extrabold">لوحة قيادة صِحّة</h3><p className="text-xs text-slate-500">ملخص رحلة المدرسة من المشكلة إلى التنفيذ.</p></div><button onClick={loadDashboard} className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white">تحديث</button></div>
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+                {[["المشكلات",dashboard.problems],["الخطط",dashboard.plans],["الأهداف",dashboard.objectives],["الأنشطة",dashboard.activities],["الشواهد",dashboard.evidence]].map(([label,value])=><div key={String(label)} className="rounded-2xl bg-slate-50 p-4 text-center"><div className="text-2xl font-extrabold text-blue-700">{value}</div><div className="mt-1 text-xs font-bold text-slate-500">{label}</div></div>)}
+              </div>
+              <div className="mt-4 rounded-2xl bg-gradient-to-l from-blue-50 to-emerald-50 p-4 text-center"><div className="font-extrabold">المسار التشغيلي</div><div className="mt-2 text-sm font-bold text-slate-600">المشكلة ← الأولوية ← الخطة ← الهدف ← النشاط ← الشاهد ← النتيجة ← الأثر</div></div>
+            </div>
+          )}
 
           {showPlans && (
             <div className="mb-4 rounded-2xl border bg-white p-5 shadow-sm">

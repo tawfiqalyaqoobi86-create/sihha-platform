@@ -51,7 +51,7 @@ def save_evaluation_item(payload: SaveItemRequest):
     try:
         item = (
             supabase.table("evaluation_items")
-            .select("id,max_score,component_id")
+            .select("id,max_score")
             .eq("id", payload.evaluation_item_id)
             .single()
             .execute()

@@ -735,7 +735,7 @@ export default function Home() {
                 ))}
               </div>
               {selectedPlanId && (
-                <div className="mt-5 grid gap-5 lg:grid-cols-2">
+                <div className="mt-5 grid gap-5">
                   <div className="rounded-2xl border p-4">
                     <h4 className="mb-3 font-extrabold">الأهداف التفصيلية</h4>
                     <div className="flex gap-2">
@@ -752,7 +752,18 @@ export default function Home() {
                         <h4 className="font-extrabold text-slate-800">الأنشطة التنفيذية</h4>
                         <p className="mt-1 text-xs text-slate-500">كل نشاط محفوظ يظهر كبطاقة مستقلة لسهولة القراءة والمتابعة.</p>
                       </div>
-                      <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">{activities.length} نشاط</span>
+                      <div className="flex items-center gap-2">
+                        <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">{activities.length} نشاط</span>
+                        {selectedPlanId && (
+                          <button
+                            type="button"
+                            onClick={()=>loadPlanDetails(selectedPlanId)}
+                            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50"
+                          >
+                            تحديث
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                     <div className="mb-4 rounded-2xl border border-blue-100 bg-blue-50/50 p-4">
@@ -786,7 +797,7 @@ export default function Home() {
                     <div className="space-y-3">
                       {activities.length === 0 && (
                         <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-500">
-                          لم تتم إضافة أنشطة تنفيذية بعد.
+                          {selectedPlanId ? "لا توجد أنشطة محفوظة لهذه الخطة. إذا كنت قد أضفت نشاطًا للتو، اضغط «تحديث» لإعادة تحميله." : "لم تتم إضافة أنشطة تنفيذية بعد."}
                         </div>
                       )}
 

@@ -2,6 +2,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from backend.app.core.supabase import supabase
+from backend.app.services.audit import audit
 
 router = APIRouter(prefix="/api/impact", tags=["Results & Impact"])
 
@@ -45,6 +46,7 @@ def create_result(payload: ResultRequest):
         r = supabase.table("results").insert(data).execute()
         if not r.data:
             raise RuntimeError("تعذر حفظ النتيجة")
+        audit("create", "result", r.data[0]["id"], details={"title": payload.title})
         return {"success": True, "data": r.data[0]}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"تعذر حفظ النتيجة: {e}")
@@ -66,6 +68,7 @@ def create_impact(payload: ImpactRequest):
         r = supabase.table("impact_measurements").insert(data).execute()
         if not r.data:
             raise RuntimeError("تعذر حفظ قياس الأثر")
+        audit("create", "impact_measurement", r.data[0]["id"], details={"problem_id": payload.problem_id, "measurement_name": payload.measurement_name})
         return {"success": True, "data": r.data[0]}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"تعذر حفظ قياس الأثر: {e}")

@@ -3,6 +3,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from backend.app.core.supabase import supabase
+from backend.app.services.audit import audit
 
 router = APIRouter(prefix="/api/health-problems", tags=["Health Problems"])
 
@@ -53,6 +54,7 @@ def create_problem(payload: ProblemRequest):
         )
         if not row.data:
             raise RuntimeError("تعذر حفظ المشكلة الصحية")
+        audit("create", "health_problem", row.data[0]["id"], payload.school_id, details={"title": payload.title})
         return {"success": True, "data": row.data[0]}
     except HTTPException:
         raise
@@ -90,9 +92,11 @@ def set_priority(payload: PriorityRequest):
 
         supabase.table("health_problems").update({
             "priority_level": "high" if payload.priority_score >= 80 else "medium" if payload.priority_score >= 50 else "low",
-            "status": "analyzed",
+            "status": "prioritized",
         }).eq("id", payload.health_problem_id).execute()
 
-        return {"success": True, "data": row.data[0] if row.data else None}
+        result = row.data[0] if row.data else None
+        audit("create", "health_problem_priority", result.get("id") if result else None, details={"health_problem_id": payload.health_problem_id, "priority_score": payload.priority_score})
+        return {"success": True, "data": result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"حدث خطأ أثناء تحديد الأولوية: {str(e)}")

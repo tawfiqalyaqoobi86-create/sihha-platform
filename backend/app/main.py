@@ -7,6 +7,7 @@ from backend.app.api.schools import router as schools_router
 from backend.app.api.academic_years import router as academic_years_router
 from backend.app.api.components import router as components_router
 from backend.app.api.evaluations import router as evaluations_router
+from backend.app.api.evidence import router as evidence_router
 
 app = FastAPI(
     title="صِحّة",
@@ -26,6 +27,7 @@ app.include_router(schools_router)
 app.include_router(academic_years_router)
 app.include_router(components_router)
 app.include_router(evaluations_router)
+app.include_router(evidence_router)
 
 @app.get("/")
 def root():

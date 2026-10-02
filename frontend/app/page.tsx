@@ -317,6 +317,28 @@ export default function Home() {
     await loadPlans();
   }
 
+
+  async function deletePlan(planId: string, title: string) {
+    if (!window.confirm(`هل أنت متأكد من حذف الخطة الصحية «${title}»؟\nسيتم حذف أهدافها وأنشطتها المرتبطة بها، ولا يمكن التراجع عن الحذف.`)) return;
+    setError("");
+    try {
+      const r = await fetch(`${API}/api/health-plans/${planId}`, { method: "DELETE" });
+      const json = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(json.detail || "تعذر حذف الخطة الصحية");
+      if (selectedPlanId === planId) {
+        setSelectedPlanId("");
+        setObjectives([]);
+        setActivities([]);
+      }
+      await loadPlans();
+      await loadProblems();
+      setSaveMessage("تم حذف الخطة الصحية");
+      setTimeout(() => setSaveMessage(""), 2500);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "تعذر حذف الخطة الصحية");
+    }
+  }
+
   async function loadProblems() {
     const r = await fetch(`${API}/api/health-problems/school/${SCHOOL_ID}/year/${YEAR_ID}`);
     const json = await r.json();
@@ -660,10 +682,20 @@ export default function Home() {
               </div>
               <div className="mt-4 grid gap-2">
                 {plans.map(p=>(
-                  <button key={p.id} onClick={()=>loadPlanDetails(p.id)} className={`rounded-xl p-3 text-right ${selectedPlanId===p.id ? "bg-blue-50 border border-blue-300" : "bg-slate-50"}`}>
-                    <div className="font-bold">{p.title}</div>
-                    <div className="text-xs text-slate-500">{p.main_goal}</div>
-                  </button>
+                  <div key={p.id} className={`rounded-xl p-3 ${selectedPlanId===p.id ? "bg-blue-50 border border-blue-300" : "bg-slate-50"}`}>
+                    <div className="flex items-start justify-between gap-3">
+                      <button onClick={()=>loadPlanDetails(p.id)} className="min-w-0 flex-1 text-right">
+                        <div className="font-bold">{p.title}</div>
+                        <div className="text-xs text-slate-500">{p.main_goal}</div>
+                      </button>
+                      <button
+                        onClick={()=>deletePlan(p.id,p.title)}
+                        className="shrink-0 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-700 hover:bg-red-100"
+                      >
+                        حذف
+                      </button>
+                    </div>
+                  </div>
                 ))}
               </div>
               {selectedPlanId && (

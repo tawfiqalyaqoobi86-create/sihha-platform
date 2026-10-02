@@ -14,9 +14,18 @@ ALTER TABLE components
     ADD COLUMN IF NOT EXISTS official_total_score numeric(10,2);
 
 UPDATE components
-SET official_total_score = COALESCE(official_total_score, max_score, 0)
+SET official_total_score =
+    CASE code
+        WHEN 'C1' THEN 60
+        WHEN 'C2' THEN 50
+        WHEN 'C3' THEN 50
+        WHEN 'C4' THEN 43
+        WHEN 'C5' THEN 51
+        WHEN 'C6' THEN 52
+        WHEN 'C7' THEN 35
+        ELSE official_total_score
+    END
 WHERE official_total_score IS NULL;
-
 
 -- ------------------------------------------------------------
 -- 2. بنود التقييم: النموذج الحالي يعتمد على المؤشر + code

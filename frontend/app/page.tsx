@@ -89,6 +89,24 @@ export default function Home() {
   const [activityEnd, setActivityEnd] = useState("");
   const [activityObjectiveId, setActivityObjectiveId] = useState("");
   const [selectedObjectiveForActivity, setSelectedObjectiveForActivity] = useState("");
+  const [resultObjectiveId, setResultObjectiveId] = useState("");
+  const [results, setResults] = useState<any[]>([]);
+  const [resultTitle, setResultTitle] = useState("");
+  const [resultIndicator, setResultIndicator] = useState("");
+  const [resultBaseline, setResultBaseline] = useState("");
+  const [resultValue, setResultValue] = useState("");
+  const [resultUnit, setResultUnit] = useState("");
+  const [resultDate, setResultDate] = useState("");
+  const [resultStatus, setResultStatus] = useState("");
+  const [impactMeasurements, setImpactMeasurements] = useState<any[]>([]);
+  const [impactTitle, setImpactTitle] = useState("");
+  const [impactBaseline, setImpactBaseline] = useState("");
+  const [impactFinal, setImpactFinal] = useState("");
+  const [impactUnit, setImpactUnit] = useState("");
+  const [impactDate, setImpactDate] = useState("");
+  const [impactDescription, setImpactDescription] = useState("");
+  const [improvementAction, setImprovementAction] = useState("");
+
   const [activityComponents, setActivityComponents] = useState<Record<string,string[]>>({});
   const [openActivityComponents, setOpenActivityComponents] = useState<string | null>(null);
   const [openActivityEvidence, setOpenActivityEvidence] = useState<string | null>(null);
@@ -237,6 +255,103 @@ export default function Home() {
     }
   }
 
+  async function loadObjectiveResults(objectiveId: string) {
+    setResultObjectiveId(objectiveId);
+    if (!objectiveId) {
+      setResults([]);
+      return;
+    }
+    try {
+      const r = await fetch(`${API}/api/impact/objective/${objectiveId}/results`);
+      const json = await r.json().catch(()=>({}));
+      if (!r.ok) throw new Error(json.detail || "تعذر تحميل النتائج");
+      setResults(json.data ?? []);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "تعذر تحميل النتائج");
+    }
+  }
+
+  async function loadProblemImpact(problemId: string) {
+    if (!problemId) {
+      setImpactMeasurements([]);
+      return;
+    }
+    try {
+      const r = await fetch(`${API}/api/impact/problem/${problemId}/measurements`);
+      const json = await r.json().catch(()=>({}));
+      if (!r.ok) throw new Error(json.detail || "تعذر تحميل قياسات الأثر");
+      setImpactMeasurements(json.data ?? []);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "تعذر تحميل قياسات الأثر");
+    }
+  }
+
+  async function createResult() {
+    if (!resultObjectiveId || !resultTitle.trim()) {
+      setError("اختر الهدف التفصيلي واكتب عنوان النتيجة.");
+      return;
+    }
+    try {
+      const objective = objectives.find((o:any)=>o.id===resultObjectiveId);
+      const r = await fetch(API + "/api/impact/results", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          objective_id:resultObjectiveId,
+          problem_id:plans.find((p:any)=>p.id===selectedPlanId)?.problem_id || null,
+          title:resultTitle,
+          indicator_name:resultIndicator || null,
+          baseline_value:resultBaseline === "" ? null : Number(resultBaseline),
+          result_value:resultValue === "" ? null : Number(resultValue),
+          unit:resultUnit || null,
+          measured_at:resultDate || null,
+          result_status:resultStatus || null
+        })
+      });
+      const json=await r.json().catch(()=>({}));
+      if(!r.ok) throw new Error(json.detail || "تعذر حفظ النتيجة");
+      if(objective) await loadObjectiveResults(objective.id);
+      setResultTitle(""); setResultIndicator(""); setResultBaseline(""); setResultValue(""); setResultUnit(""); setResultDate(""); setResultStatus("");
+      setSaveMessage("تم حفظ النتيجة");
+      setTimeout(()=>setSaveMessage(""),2500);
+    } catch(e) {
+      setError(e instanceof Error ? e.message : "تعذر حفظ النتيجة");
+    }
+  }
+
+  async function createImpact() {
+    const problemId = plans.find((p:any)=>p.id===selectedPlanId)?.problem_id || "";
+    if (!problemId || !impactTitle.trim()) {
+      setError("اكتب اسم قياس الأثر.");
+      return;
+    }
+    try {
+      const r = await fetch(API + "/api/impact/measurements", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          problem_id:problemId,
+          result_id:results.length ? results[0].id : null,
+          measurement_name:impactTitle,
+          baseline_value:impactBaseline === "" ? null : Number(impactBaseline),
+          final_value:impactFinal === "" ? null : Number(impactFinal),
+          unit:impactUnit || null,
+          measured_at:impactDate || null,
+          impact_description:impactDescription || null,
+          improvement_action:improvementAction || null
+        })
+      });
+      const json=await r.json().catch(()=>({}));
+      if(!r.ok) throw new Error(json.detail || "تعذر حفظ قياس الأثر");
+      await loadProblemImpact(problemId);
+      setImpactTitle(""); setImpactBaseline(""); setImpactFinal(""); setImpactUnit(""); setImpactDate(""); setImpactDescription(""); setImprovementAction("");
+      setSaveMessage("تم حفظ قياس الأثر");
+      setTimeout(()=>setSaveMessage(""),2500);
+    } catch(e) {
+      setError(e instanceof Error ? e.message : "تعذر حفظ قياس الأثر");
+    }
+  }
+
   async function loadPlanDetails(planId: string) {
     setSelectedPlanId(planId);
     setError("");
@@ -253,6 +368,11 @@ export default function Home() {
       const loadedActivities = a.data ?? [];
       setObjectives(o.data ?? []);
       setActivities(loadedActivities);
+      const firstObjective = (o.data ?? [])[0];
+      setResultObjectiveId(prev => prev || firstObjective?.id || "");
+      if (firstObjective?.id) loadObjectiveResults(firstObjective.id);
+      const plan = plans.find((p:any)=>p.id===planId);
+      if (plan?.problem_id) loadProblemImpact(plan.problem_id);
 
       const componentEntries = await Promise.all(
         loadedActivities.map(async (activity: any) => {
@@ -1082,6 +1202,87 @@ export default function Home() {
                       </button>
                     </div>
                   )}
+
+                  <div className="mt-5 grid gap-5 lg:grid-cols-2">
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                      <div className="mb-4 flex items-center justify-between gap-3">
+                        <div>
+                          <h4 className="font-extrabold text-slate-800">3. النتائج</h4>
+                          <p className="mt-1 text-xs text-slate-500">سجّل النتيجة القابلة للقياس لكل هدف تفصيلي بعد تنفيذ الأنشطة.</p>
+                        </div>
+                        <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">{results.length} نتيجة</span>
+                      </div>
+                      <div className="grid gap-2">
+                        <select value={resultObjectiveId} onChange={e=>loadObjectiveResults(e.target.value)} className="rounded-xl border px-3 py-2.5">
+                          <option value="">اختر الهدف التفصيلي</option>
+                          {objectives.map((o:any)=><option key={o.id} value={o.id}>{o.title}</option>)}
+                        </select>
+                        <input value={resultTitle} onChange={e=>setResultTitle(e.target.value)} placeholder="عنوان النتيجة" className="rounded-xl border px-3 py-2.5" />
+                        <input value={resultIndicator} onChange={e=>setResultIndicator(e.target.value)} placeholder="مؤشر القياس (اختياري)" className="rounded-xl border px-3 py-2.5" />
+                        <div className="grid gap-2 sm:grid-cols-3">
+                          <input type="number" value={resultBaseline} onChange={e=>setResultBaseline(e.target.value)} placeholder="خط الأساس" className="rounded-xl border px-3 py-2.5" />
+                          <input type="number" value={resultValue} onChange={e=>setResultValue(e.target.value)} placeholder="النتيجة" className="rounded-xl border px-3 py-2.5" />
+                          <input value={resultUnit} onChange={e=>setResultUnit(e.target.value)} placeholder="الوحدة" className="rounded-xl border px-3 py-2.5" />
+                        </div>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          <input type="date" value={resultDate} onChange={e=>setResultDate(e.target.value)} className="rounded-xl border px-3 py-2.5" />
+                          <select value={resultStatus} onChange={e=>setResultStatus(e.target.value)} className="rounded-xl border px-3 py-2.5">
+                            <option value="">حالة النتيجة</option>
+                            <option value="achieved">متحققة</option>
+                            <option value="partial">متحققة جزئيًا</option>
+                            <option value="not_achieved">غير متحققة</option>
+                          </select>
+                        </div>
+                        <button onClick={createResult} className="rounded-xl bg-blue-600 px-4 py-2.5 font-bold text-white">إضافة النتيجة</button>
+                      </div>
+                      <div className="mt-4 space-y-2">
+                        {results.map((r:any)=>(
+                          <div key={r.id} className="rounded-xl bg-slate-50 p-3">
+                            <div className="font-bold text-slate-800">{r.title}</div>
+                            <div className="mt-1 text-xs text-slate-500">
+                              {r.baseline_value ?? "—"} → {r.result_value ?? "—"} {r.unit || ""}
+                              {r.measured_at ? ` • ${r.measured_at}` : ""}
+                            </div>
+                          </div>
+                        ))}
+                        {!results.length && <div className="text-xs text-slate-400">لا توجد نتائج مسجلة لهذا الهدف.</div>}
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                      <div className="mb-4 flex items-center justify-between gap-3">
+                        <div>
+                          <h4 className="font-extrabold text-slate-800">4. قياس الأثر</h4>
+                          <p className="mt-1 text-xs text-slate-500">قِس التغير النهائي الذي أحدثته الخطة في المشكلة الصحية.</p>
+                        </div>
+                        <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">{impactMeasurements.length} قياس</span>
+                      </div>
+                      <div className="grid gap-2">
+                        <input value={impactTitle} onChange={e=>setImpactTitle(e.target.value)} placeholder="اسم قياس الأثر" className="rounded-xl border px-3 py-2.5" />
+                        <div className="grid gap-2 sm:grid-cols-3">
+                          <input type="number" value={impactBaseline} onChange={e=>setImpactBaseline(e.target.value)} placeholder="القيمة قبل التدخل" className="rounded-xl border px-3 py-2.5" />
+                          <input type="number" value={impactFinal} onChange={e=>setImpactFinal(e.target.value)} placeholder="القيمة بعد التدخل" className="rounded-xl border px-3 py-2.5" />
+                          <input value={impactUnit} onChange={e=>setImpactUnit(e.target.value)} placeholder="الوحدة" className="rounded-xl border px-3 py-2.5" />
+                        </div>
+                        <input type="date" value={impactDate} onChange={e=>setImpactDate(e.target.value)} className="rounded-xl border px-3 py-2.5" />
+                        <textarea rows={2} value={impactDescription} onChange={e=>setImpactDescription(e.target.value)} placeholder="وصف الأثر" className="rounded-xl border px-3 py-2.5 resize-none" />
+                        <textarea rows={2} value={improvementAction} onChange={e=>setImprovementAction(e.target.value)} placeholder="إجراء التحسين" className="rounded-xl border px-3 py-2.5 resize-none" />
+                        <button onClick={createImpact} className="rounded-xl bg-emerald-600 px-4 py-2.5 font-bold text-white">إضافة قياس الأثر</button>
+                      </div>
+                      <div className="mt-4 space-y-2">
+                        {impactMeasurements.map((m:any)=>(
+                          <div key={m.id} className="rounded-xl bg-slate-50 p-3">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="font-bold text-slate-800">{m.measurement_name}</div>
+                              <span className="font-extrabold text-emerald-700">{m.change_percentage ?? 0}%</span>
+                            </div>
+                            <div className="mt-1 text-xs text-slate-500">{m.baseline_value ?? "—"} → {m.final_value ?? "—"} {m.unit || ""}</div>
+                          </div>
+                        ))}
+                        {!impactMeasurements.length && <div className="text-xs text-slate-400">لا توجد قياسات أثر مسجلة لهذه المشكلة.</div>}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

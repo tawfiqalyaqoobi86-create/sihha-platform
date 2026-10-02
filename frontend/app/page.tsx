@@ -97,7 +97,7 @@ export default function Home() {
   const [showAI, setShowAI] = useState(false);
   const [competition, setCompetition] = useState<any>(null);
   const SCHOOL_ID = "d088a83c-9619-4bc2-9c7e-02d9e5631617";
-  const YEAR_ID = "49fbf490-53ec-4044-9b76-d856e9533ee8";
+  const YEAR_ID = "49fbf490-53ec-4044-9b76-d856e9533ee3";
 
   useEffect(() => {
     fetch(`${API}/api/components/`)
@@ -409,7 +409,7 @@ export default function Home() {
           <div className="flex items-center gap-4">
             <div className="text-left">
               <div className="font-bold">توفيق اليعقوبي</div>
-              <div className="text-xs text-slate-500">مدير المدرسة • 2026–2027</div>
+              <div className="text-xs text-slate-500">مدير المدرسة • 2026 / 2027</div>
             </div>
             <Menu className="text-slate-500" />
           </div>
@@ -423,7 +423,7 @@ export default function Home() {
               <div>
                 <p className="mb-1 text-sm text-slate-500">الرئيسية ← المكونات ← التقييم</p>
                 <h2 className="text-2xl font-extrabold">
-                  {selected ? `C${selected.code} - ${selected.name}` : "التقييم"}
+                  {selected ? `${selected.code} - ${selected.name}` : "التقييم"}
                 </h2>
                 <p className="mt-1 text-sm text-slate-500">
                   تقييم الممارسة المدرسية وفق البنود الرسمية وحفظ الشواهد والملاحظات.

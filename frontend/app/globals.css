@@ -1,0 +1,17 @@
+@import "tailwindcss";
+
+:root {
+  --navy: #102a56;
+  --blue: #1769e8;
+  --green: #25b87a;
+  --bg: #f3f7fc;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--navy);
+  font-family: Tahoma, Arial, sans-serif;
+}
+button, select, textarea { font: inherit; }

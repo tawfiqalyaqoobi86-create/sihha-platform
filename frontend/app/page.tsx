@@ -15,6 +15,8 @@ import {
   Menu,
   Save,
   Search,
+  Plus,
+  Target,
   ShieldCheck,
   Users,
   Utensils,
@@ -63,6 +65,10 @@ export default function Home() {
   const [saveMessage, setSaveMessage] = useState("");
   const [uploading, setUploading] = useState<Record<string, boolean>>({});
   const [evidenceCount, setEvidenceCount] = useState<Record<string, number>>({});
+  const [problems, setProblems] = useState<any[]>([]);
+  const [showProblems, setShowProblems] = useState(false);
+  const [problemTitle, setProblemTitle] = useState("");
+  const [problemDescription, setProblemDescription] = useState("");
   const SCHOOL_ID = "d088a83c-9619-4bc2-9c7e-02d9e5631617";
   const YEAR_ID = "49fbf490-53ec-4044-9b76-d856e9533ee8";
 
@@ -82,6 +88,7 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    loadProblems().catch(() => {});
     fetch(`${API}/api/evaluations/school/${SCHOOL_ID}/year/${YEAR_ID}`)
       .then((r) => r.json())
       .then((json) => {
@@ -118,6 +125,35 @@ export default function Home() {
     : 0;
 
   const overallMax = totalMax || 341;
+
+  async function loadProblems() {
+    const r = await fetch(`${API}/api/health-problems/school/${SCHOOL_ID}/year/${YEAR_ID}`);
+    const json = await r.json();
+    setProblems(json.data ?? []);
+  }
+
+  async function createProblem() {
+    if (!problemTitle.trim()) return;
+    const r = await fetch(`${API}/api/health-problems/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        school_id: SCHOOL_ID,
+        academic_year_id: YEAR_ID,
+        title: problemTitle,
+        description: problemDescription || null,
+        priority_level: "medium",
+      }),
+    });
+    const json = await r.json();
+    if (!r.ok) {
+      setError(json.detail || "تعذر حفظ المشكلة");
+      return;
+    }
+    setProblemTitle("");
+    setProblemDescription("");
+    await loadProblems();
+  }
 
   async function uploadEvidence(item: Item, file: File) {
     setUploading((v) => ({ ...v, [item.id]: true }));
@@ -235,10 +271,39 @@ export default function Home() {
               <ToolbarButton icon={<ClipboardList size={17} />} text="بنود التقييم" active />
               <ToolbarButton icon={<BarChart3 size={17} />} text="تحليل النتائج" />
               <ToolbarButton icon={<Info size={17} />} text="معلومات المكون" />
-              <ToolbarButton icon={<Search size={17} />} text="البحث" />
+              <ToolbarButton icon={<Search size={17} />} text="البحث" /><button
+              onClick={() => { setShowProblems(!showProblems); if (!showProblems) loadProblems(); }}
+              className="flex items-center gap-2 rounded-xl border bg-white px-4 py-2 text-sm font-bold"
+            >
+              <Target size={17} /> المشكلات الصحية
+            </button>
             </div>
           </div>
 
+          {showProblems && (
+            <div className="mb-4 rounded-2xl border bg-white p-5 shadow-sm">
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-extrabold">المشكلات الصحية</h3>
+                  <p className="text-xs text-slate-500">من المشكلة إلى الأولوية ثم الخطة والأثر.</p>
+                </div>
+                <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">{problems.length} مشكلة</span>
+              </div>
+              <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto]">
+                <input value={problemTitle} onChange={e=>setProblemTitle(e.target.value)} placeholder="عنوان المشكلة الصحية" className="rounded-xl border px-3 py-2 outline-none focus:border-blue-500" />
+                <input value={problemDescription} onChange={e=>setProblemDescription(e.target.value)} placeholder="وصف مختصر / دليل أولي" className="rounded-xl border px-3 py-2 outline-none focus:border-blue-500" />
+                <button onClick={createProblem} className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-2 font-bold text-white"><Plus size={17}/> إضافة</button>
+              </div>
+              <div className="mt-4 grid gap-2">
+                {problems.map((p)=>(
+                  <div key={p.id} className="flex items-center justify-between rounded-xl bg-slate-50 p-3">
+                    <div><div className="font-bold">{p.title}</div><div className="text-xs text-slate-500">{p.description || "لا يوجد وصف"}</div></div>
+                    <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">{p.priority_level === "high" ? "عالية" : p.priority_level === "low" ? "منخفضة" : "متوسطة"}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {error && (
             <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
               {error}

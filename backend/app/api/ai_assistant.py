@@ -61,11 +61,23 @@ def plan_analysis(payload: PlanAnalysisRequest):
         plan = plan_rows[0]
         problems = (
             supabase.table("health_problems")
-            .select("id,title,description,priority_level,priority_score,status")
+            .select("id,title,description,priority_level,status")
             .eq("id", plan["problem_id"])
             .limit(1)
             .execute()
         ).data
+
+        priority_rows = (
+            supabase.table("problem_priorities")
+            .select("priority_score,rationale,selected")
+            .eq("problem_id", plan["problem_id"])
+            .limit(1)
+            .execute()
+        ).data
+        priority = priority_rows[0] if priority_rows else None
+        if problems:
+            problems[0]["priority_score"] = priority.get("priority_score") if priority else None
+            problems[0]["priority_rationale"] = priority.get("rationale") if priority else None
 
         objectives = (
             supabase.table("objectives")

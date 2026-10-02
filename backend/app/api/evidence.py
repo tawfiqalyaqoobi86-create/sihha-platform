@@ -137,10 +137,22 @@ async def upload_evidence(
 @router.get("/item/{evaluation_item_id}")
 def get_item_evidence(evaluation_item_id: str):
     try:
+        # evidence.school_evaluation_item_id يشير إلى صف school_evaluation_items،
+        # بينما المسار يستقبل evaluation_item_id الرسمي؛ نحول المعرّف أولًا.
+        item_rows = (
+            supabase.table("school_evaluation_items")
+            .select("id")
+            .eq("evaluation_item_id", evaluation_item_id)
+            .execute()
+        )
+        item_ids = [row["id"] for row in item_rows.data]
+        if not item_ids:
+            return {"success": True, "data": []}
+
         rows = (
             supabase.table("evidence")
             .select("id,title,description,original_file_name,mime_type,file_size,storage_path,created_at")
-            .eq("school_evaluation_item_id", evaluation_item_id)
+            .in_("school_evaluation_item_id", item_ids)
             .order("created_at", desc=True)
             .execute()
         )

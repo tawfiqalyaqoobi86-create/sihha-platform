@@ -90,6 +90,7 @@ export default function Home() {
   const [activityObjectiveId, setActivityObjectiveId] = useState("");
   const [activityComponents, setActivityComponents] = useState<Record<string,string[]>>({});
   const [openActivityComponents, setOpenActivityComponents] = useState<string | null>(null);
+  const [openActivityEvidence, setOpenActivityEvidence] = useState<string | null>(null);
   const [activityEvidence, setActivityEvidence] = useState<Record<string,any[]>>({});
   const [showDashboard, setShowDashboard] = useState(false);
   const [dashboard, setDashboard] = useState({ problems: 0, plans: 0, objectives: 0, activities: 0, evidence: 0, score: 0, percentage: 0, components: [] as any[] });
@@ -195,9 +196,44 @@ export default function Home() {
   }
 
   async function loadActivityEvidence(activityId: string) {
-    const r=await fetch(`${API}/api/evidence/activity/${activityId}`);
-    const json=await r.json();
-    setActivityEvidence(v=>({...v,[activityId]:json.data??[]}));
+    try {
+      const r=await fetch(`${API}/api/evidence/activity/${activityId}`);
+      const json=await r.json().catch(()=>({}));
+      if(!r.ok) throw new Error(json.detail || "تعذر تحميل أدلة النشاط");
+      setActivityEvidence(v=>({...v,[activityId]:json.data??[]}));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "تعذر تحميل أدلة النشاط");
+    }
+  }
+
+  async function openActivityEvidencePicker(activityId: string) {
+    setError("");
+    const opening = openActivityEvidence !== activityId;
+    setOpenActivityEvidence(opening ? activityId : null);
+    if (!opening) return;
+    try {
+      await Promise.all([loadActivityEvidence(activityId), loadEvidenceHub()]);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "تعذر تحميل الأدلة");
+    }
+  }
+
+  async function linkEvidenceToActivity(activityId: string, evidenceId: string) {
+    setError("");
+    try {
+      const r = await fetch(API + "/api/evidence/link", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({evidence_id:evidenceId, activity_id:activityId})
+      });
+      const json = await r.json().catch(()=>({}));
+      if(!r.ok) throw new Error(json.detail || "تعذر ربط الشاهد بالنشاط");
+      await loadActivityEvidence(activityId);
+      setSaveMessage("تم ربط الشاهد بالنشاط");
+      setTimeout(()=>setSaveMessage(""),2500);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "تعذر ربط الشاهد بالنشاط");
+    }
   }
 
   async function loadPlanDetails(planId: string) {
@@ -228,7 +264,19 @@ export default function Home() {
           }
         })
       );
+      const evidenceEntries = await Promise.all(
+        loadedActivities.map(async (activity: any) => {
+          try {
+            const response = await fetch(`${API}/api/evidence/activity/${activity.id}`);
+            const json = await response.json();
+            return [activity.id, json.data ?? []] as const;
+          } catch {
+            return [activity.id, []] as const;
+          }
+        })
+      );
       setActivityComponents(Object.fromEntries(componentEntries));
+      setActivityEvidence(Object.fromEntries(evidenceEntries));
     } catch (e) {
       setError(e instanceof Error ? e.message : "تعذر تحميل تفاصيل الخطة");
     }
@@ -905,13 +953,14 @@ export default function Home() {
                                 </div>
                               </td>
                               <td className="px-3 py-4">
-                                <div className="min-w-[160px]">
+                                <div className="min-w-[220px]">
                                   <button
                                     type="button"
-                                    onClick={()=>loadActivityEvidence(a.id)}
-                                    className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 hover:bg-emerald-100"
+                                    onClick={()=>openActivityEvidencePicker(a.id)}
+                                    className="flex w-full items-center justify-between gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-right text-xs font-bold text-emerald-700 hover:bg-emerald-100"
                                   >
-                                    {evidence.length ? `✓ ${evidence.length} شاهد مختار` : "اختيار الأدلة"}
+                                    <span>{evidence.length ? `✓ ${evidence.length} شاهد مرتبط` : "اختيار الأدلة"}</span>
+                                    <span>▼</span>
                                   </button>
                                   <div className="mt-2 space-y-1.5">
                                     {evidence.length ? evidence.map((ev:any)=>(
@@ -920,6 +969,30 @@ export default function Home() {
                                       </div>
                                     )) : <div className="text-[10px] text-slate-400">لا توجد أدلة مرتبطة</div>}
                                   </div>
+                                  {openActivityEvidence === a.id && (
+                                    <div className="mt-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+                                      <div className="mb-2 text-xs font-extrabold text-slate-700">اختر الشواهد من مستودع الأدلة</div>
+                                      <div className="max-h-56 space-y-1 overflow-y-auto">
+                                        {allEvidence.length ? allEvidence.map((ev:any)=>{
+                                          const linked = evidence.some((x:any)=>x.id===ev.id);
+                                          return (
+                                            <label key={ev.id} className="flex items-start gap-2 rounded-xl px-2 py-2 text-[11px] font-bold text-slate-700 hover:bg-emerald-50">
+                                              <input
+                                                type="checkbox"
+                                                checked={linked}
+                                                disabled={linked}
+                                                onChange={()=>linkEvidenceToActivity(a.id,ev.id)}
+                                                className="mt-0.5 h-4 w-4 accent-emerald-600"
+                                              />
+                                              <span className="min-w-0 flex-1">{ev.title || ev.original_file_name}</span>
+                                              {linked && <span className="shrink-0 text-emerald-600">مرتبط</span>}
+                                            </label>
+                                          );
+                                        }) : <div className="py-4 text-center text-[11px] text-slate-400">لا توجد شواهد في المستودع.</div>}
+                                      </div>
+                                      <button type="button" onClick={()=>setOpenActivityEvidence(null)} className="mt-2 w-full rounded-xl bg-slate-100 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-200">تم</button>
+                                    </div>
+                                  )}
                                 </div>
                               </td>
                               <td className="px-3 py-4 text-center">

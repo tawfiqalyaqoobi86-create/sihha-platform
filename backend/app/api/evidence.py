@@ -134,6 +134,47 @@ async def upload_evidence(
         raise HTTPException(status_code=500, detail=f"حدث خطأ أثناء رفع الشاهد: {str(e)}")
 
 
+@router.delete("/{evidence_id}")
+def delete_evidence(evidence_id: str):
+    try:
+        row_result = (
+            supabase.table("evidence")
+            .select("id,storage_path,title,school_evaluation_id")
+            .eq("id", evidence_id)
+            .limit(1)
+            .execute()
+        )
+        if not row_result.data:
+            raise HTTPException(status_code=404, detail="الشاهد غير موجود")
+
+        row = row_result.data[0]
+
+        # حذف الملف الفعلي من Storage أولًا
+        if row.get("storage_path"):
+            supabase.storage.from_(BUCKET).remove([row["storage_path"]])
+
+        deleted = (
+            supabase.table("evidence")
+            .delete()
+            .eq("id", evidence_id)
+            .execute()
+        )
+
+        audit(
+            "delete",
+            "evidence",
+            evidence_id,
+            details={"title": row.get("title"), "storage_path": row.get("storage_path")},
+        )
+
+        return {"success": True, "data": deleted.data[0] if deleted.data else None}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"تعذر حذف الشاهد: {e}")
+
+
 @router.get("/item/{evaluation_item_id}")
 def get_item_evidence(evaluation_item_id: str):
     try:

@@ -3,6 +3,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from backend.app.core.supabase import supabase
+from backend.app.services.audit import audit
 
 router = APIRouter(prefix="/api/evaluations", tags=["Evaluations"])
 
@@ -121,6 +122,7 @@ def save_evaluation_item(payload: SaveItemRequest):
             "percentage": percentage,
         }).eq("id", evaluation["id"]).execute()
 
+        audit("save", "evaluation_item", payload.evaluation_item_id, payload.school_id, details={"score": payload.score})
         return {
             "success": True,
             "evaluation_id": evaluation["id"],

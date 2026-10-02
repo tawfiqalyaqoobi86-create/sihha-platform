@@ -182,10 +182,31 @@ def create_activity(plan_id: str, payload: ActivityRequest):
     try:
         data = payload.model_dump(exclude_none=True)
         data["health_plan_id"] = plan_id
+
+        if payload.objective_id:
+            objective = (
+                supabase.table("objectives")
+                .select("id,health_plan_id")
+                .eq("id", payload.objective_id)
+                .limit(1)
+                .execute()
+            )
+            if not objective.data or objective.data[0]["health_plan_id"] != plan_id:
+                raise HTTPException(status_code=400, detail="الهدف التفصيلي المحدد لا ينتمي إلى هذه الخطة")
+
         row = supabase.table("activities").insert(data).execute()
         if not row.data:
             raise RuntimeError("تعذر حفظ النشاط")
-        audit("create", "activity", row.data[0]["id"], details={"health_plan_id": plan_id, "title": payload.title})
+        audit(
+            "create",
+            "activity",
+            row.data[0]["id"],
+            details={
+                "health_plan_id": plan_id,
+                "objective_id": payload.objective_id,
+                "title": payload.title,
+            },
+        )
         return {"success": True, "data": row.data[0]}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"حدث خطأ أثناء حفظ النشاط: {str(e)}")

@@ -667,7 +667,15 @@ export default function Home() {
         </section>
 
         <aside className="rounded-2xl border bg-white p-3 shadow-sm">
-          <h3 className="px-2 py-3 text-xl font-extrabold">المكونات الرئيسية (7)</h3>
+          <h3 className="px-2 py-3 text-xl font-extrabold">مركز المنصة</h3>
+          <div className="mb-4 grid grid-cols-2 gap-2">
+            <button onClick={()=>{setShowDashboard(true);loadDashboard();}} className="rounded-xl bg-blue-50 p-2 text-xs font-bold text-blue-700">الرئيسية</button>
+            <button onClick={()=>{setShowReport(true);loadReport();}} className="rounded-xl bg-emerald-50 p-2 text-xs font-bold text-emerald-700">التقارير</button>
+            <button onClick={()=>{setShowProblems(true);loadProblems();}} className="rounded-xl bg-amber-50 p-2 text-xs font-bold text-amber-700">المشكلات</button>
+            <button onClick={()=>{setShowPlans(true);loadPlans();}} className="rounded-xl bg-violet-50 p-2 text-xs font-bold text-violet-700">الخطط</button>
+            <button onClick={()=>{setShowCompetition(true);loadCompetition();}} className="col-span-2 rounded-xl bg-blue-600 p-2 text-xs font-bold text-white">وضع المسابقة</button>
+          </div>
+          <h3 className="px-2 py-3 text-lg font-extrabold">المكونات الرئيسية (7)</h3>
           <div className="space-y-2">
             {components.map((component, i) => {
               const Icon = icons[i] || Activity;

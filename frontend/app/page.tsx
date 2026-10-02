@@ -138,7 +138,25 @@ export default function Home() {
         if (!r.ok) throw new Error("تعذر جلب بنود التقييم");
         return r.json();
       })
-      .then((json) => setItems(json.items ?? []))
+      .then(async (json) => {
+        const loadedItems: Item[] = json.items ?? [];
+        setItems(loadedItems);
+
+        // استرجاع عدد الشواهد المحفوظة فعليًا من قاعدة البيانات بعد إعادة فتح الصفحة
+        const counts = await Promise.all(
+          loadedItems.map(async (item) => {
+            try {
+              const evidenceResponse = await fetch(API + "/api/evidence/item/" + item.id);
+              if (!evidenceResponse.ok) return [item.id, 0] as const;
+              const evidenceJson = await evidenceResponse.json();
+              return [item.id, (evidenceJson.data ?? []).length] as const;
+            } catch {
+              return [item.id, 0] as const;
+            }
+          })
+        );
+        setEvidenceCount(Object.fromEntries(counts));
+      })
       .catch((e) => setError(e.message))
       .finally(() => setItemsLoading(false));
   }, [selected]);

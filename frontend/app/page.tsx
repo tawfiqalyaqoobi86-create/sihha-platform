@@ -60,6 +60,9 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [itemsLoading, setItemsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [saveMessage, setSaveMessage] = useState("");
+  const SCHOOL_ID = "d088a83c-9619-4bc2-9c7e-02d9e5631617";
+  const YEAR_ID = "49fbf490-53ec-4044-9b76-d856e9533ee8";
 
   useEffect(() => {
     fetch(`${API}/api/components/`)
@@ -77,6 +80,20 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    fetch(`${API}/api/evaluations/school/${SCHOOL_ID}/year/${YEAR_ID}`)
+      .then((r) => r.json())
+      .then((json) => {
+        const savedJudgments: Record<string, string> = {};
+        const savedNotes: Record<string, string> = {};
+        for (const row of json.data?.items ?? []) {
+          savedJudgments[row.evaluation_item_id] = String(row.score);
+          savedNotes[row.evaluation_item_id] = row.evaluator_notes ?? "";
+        }
+        setJudgment(savedJudgments);
+        setNotes(savedNotes);
+      })
+      .catch(() => {});
+
     if (!selected) return;
     setItemsLoading(true);
     fetch(`${API}/api/components/${selected.id}/evaluation-items`)
@@ -99,6 +116,37 @@ export default function Home() {
     : 0;
 
   const overallMax = totalMax || 341;
+
+  async function saveCurrentComponent() {
+    if (!selected) return;
+    setSaveMessage("جاري الحفظ...");
+    setError("");
+    try {
+      for (const item of items) {
+        const score = Number(judgment[item.id] || 0);
+        const response = await fetch(`${API}/api/evaluations/save-item`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            school_id: SCHOOL_ID,
+            academic_year_id: YEAR_ID,
+            evaluation_item_id: item.id,
+            score,
+            evaluator_notes: notes[item.id] || null,
+          }),
+        });
+        if (!response.ok) {
+          const body = await response.json().catch(() => ({}));
+          throw new Error(body.detail || "تعذر حفظ التقييم");
+        }
+      }
+      setSaveMessage("تم حفظ التقييم بنجاح");
+      setTimeout(() => setSaveMessage(""), 2500);
+    } catch (e) {
+      setSaveMessage("");
+      setError(e instanceof Error ? e.message : "حدث خطأ أثناء الحفظ");
+    }
+  }
 
   function go(step: number) {
     const next = components[selectedIndex + step];
@@ -230,9 +278,12 @@ export default function Home() {
               <button onClick={() => go(-1)} className="flex items-center gap-2 rounded-xl border bg-white px-6 py-2.5 font-bold">
                 <ChevronRight size={18} /> السابق
               </button>
-              <button className="flex items-center gap-2 rounded-xl bg-blue-600 px-8 py-2.5 font-bold text-white shadow-sm">
+              <button onClick={saveCurrentComponent} className="flex items-center gap-2 rounded-xl bg-blue-600 px-8 py-2.5 font-bold text-white shadow-sm">
                 <Save size={18} /> حفظ وانتقال
               </button>
+              {saveMessage && (
+                <span className="text-sm font-bold text-emerald-700">{saveMessage}</span>
+              )}
               <button onClick={() => go(1)} className="flex items-center gap-2 rounded-xl border bg-white px-6 py-2.5 font-bold">
                 التالي <ChevronLeft size={18} />
               </button>

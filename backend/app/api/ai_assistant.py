@@ -134,7 +134,10 @@ def plan_analysis(payload: PlanAnalysisRequest):
         if not api_key:
             raise HTTPException(status_code=500, detail="مفتاح OPENAI_API_KEY غير مضبوط في بيئة الخادم")
 
-        model = os.getenv("OPENAI_MODEL", "gpt-5.6-mini")
+        model = os.getenv("OPENAI_MODEL", "gpt-6-luna")
+        # التوافق مع الإعداد القديم الذي لم يعد متاحًا في API.
+        if model in {"gpt-5.6-mini", "gpt-5.6-mini-latest"}:
+            model = "gpt-6-luna"
         client = OpenAI(api_key=api_key)
 
         system_prompt = """

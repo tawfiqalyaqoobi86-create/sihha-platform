@@ -758,9 +758,22 @@ export default function Home() {
                       <button onClick={createActivity} className="rounded-xl bg-blue-600 px-4 py-2 font-bold text-white">إضافة النشاط</button>
                     </div>
                     <div className="mt-3 space-y-2">
-                      {activities.map(a=><div key={a.id} className="rounded-xl bg-slate-50 p-3 text-sm">
-                        <div className="flex items-center justify-between"><b>{a.title}</b><span className="text-xs text-slate-500">{a.responsible_person || "غير محدد"} • {a.completion_percentage}%</span></div>
-                        <div className="mt-2 flex flex-wrap gap-2">
+                      {activities.map(a=>{
+                      const evidence = activityEvidence[a.id] || [];
+                      const formatDate = (value: string | null | undefined) => value ? new Date(value + "T00:00:00").toLocaleDateString("ar-OM") : "غير محدد";
+                      return <div key={a.id} className="rounded-xl bg-slate-50 p-3 text-sm">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <b className="text-base">{a.title}</b>
+                            <div className="mt-1 text-xs text-slate-500">
+                              المسؤول: {a.responsible_person || "غير محدد"} • الإنجاز: {a.completion_percentage ?? 0}%
+                            </div>
+                          </div>
+                          <div className="shrink-0 rounded-lg bg-white px-3 py-2 text-xs font-bold text-slate-600">
+                            {formatDate(a.start_date)} → {formatDate(a.end_date)}
+                          </div>
+                        </div>
+                        <div className="mt-3 flex flex-wrap gap-2">
                           {components.map(c=><label key={c.id} className="flex items-center gap-1 text-xs">
                             <input type="checkbox" checked={(activityComponents[a.id]||[]).includes(c.id)} onChange={e=>{
                               const ids=new Set(activityComponents[a.id]||[]);
@@ -769,9 +782,12 @@ export default function Home() {
                             }}/>{c.name}
                           </label>)}
                         </div>
-                        <button onClick={()=>loadActivityEvidence(a.id)} className="mt-2 text-xs font-bold text-blue-700">عرض الأدلة المرتبطة</button>
-                        {(activityEvidence[a.id]||[]).map(ev=><div key={ev.id} className="mt-1 text-xs text-emerald-700">✓ {ev.title}</div>)}
-                      </div>)}
+                        <button onClick={()=>loadActivityEvidence(a.id)} className="mt-2 text-xs font-bold text-blue-700">الأدلة المختارة</button>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {evidence.length ? evidence.map(ev=><span key={ev.id} className="rounded-lg bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-700">✓ {ev.title}</span>) : <span className="text-xs text-slate-400">لم يتم اختيار أدلة بعد</span>}
+                        </div>
+                      </div>
+                    })}
                     </div>
                   </div>
                 </div>

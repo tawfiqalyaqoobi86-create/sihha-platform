@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.api.schools import router as schools_router
 from backend.app.api.academic_years import router as academic_years_router
@@ -11,6 +12,14 @@ app = FastAPI(
     title="صِحّة",
     description="منصة عمر بن مسعود للمدارس المعززة للصحة",
     version="0.3.0",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.include_router(schools_router)

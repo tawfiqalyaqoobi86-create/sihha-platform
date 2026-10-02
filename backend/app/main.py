@@ -12,6 +12,7 @@ from backend.app.api.health_problems import router as health_problems_router
 from backend.app.api.health_plans import router as health_plans_router
 from backend.app.api.impact import router as impact_router
 from backend.app.api.innovations import router as innovations_router
+from backend.app.api.partnerships import router as partnerships_router
 
 app = FastAPI(
     title="صِحّة",
@@ -36,6 +37,7 @@ app.include_router(health_problems_router)
 app.include_router(health_plans_router)
 app.include_router(impact_router)
 app.include_router(innovations_router)
+app.include_router(partnerships_router)
 
 @app.get("/")
 def root():

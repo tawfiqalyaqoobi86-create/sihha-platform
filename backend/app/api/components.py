@@ -107,7 +107,7 @@ def get_component_evaluation_items(component_id: str):
             sources = (
                 supabase
                 .table("evaluation_sources")
-                .select("id,evaluation_item_id,title,description,created_at")
+                .select("id,evaluation_item_id,source_name,source_description,sort_order,created_at")
                 .in_("evaluation_item_id", item_ids)
                 .order("created_at")
                 .execute()

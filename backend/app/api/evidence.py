@@ -171,3 +171,58 @@ def get_activity_evidence(activity_id: str):
         return {"success": True, "data": rows.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"حدث خطأ أثناء جلب أدلة النشاط: {str(e)}")
+
+
+from pydantic import BaseModel
+
+class EvidenceLinkRequest(BaseModel):
+    evidence_id: str
+    problem_id: str | None = None
+    health_plan_id: str | None = None
+    objective_id: str | None = None
+    activity_id: str | None = None
+    indicator_id: str | None = None
+    result_id: str | None = None
+    impact_measurement_id: str | None = None
+    link_note: str | None = None
+
+@router.post("/link")
+def link_evidence(payload: EvidenceLinkRequest):
+    try:
+        targets = {k:v for k,v in {
+            "problem_id": payload.problem_id,
+            "health_plan_id": payload.health_plan_id,
+            "objective_id": payload.objective_id,
+            "activity_id": payload.activity_id,
+            "indicator_id": payload.indicator_id,
+            "result_id": payload.result_id,
+            "impact_measurement_id": payload.impact_measurement_id,
+        }.items() if v is not None}
+        if not targets:
+            raise HTTPException(status_code=400, detail="حدد جهة واحدة على الأقل لربط الشاهد بها")
+        saved = supabase.table("evidence_links").insert({"evidence_id":payload.evidence_id, **targets, "link_note":payload.link_note}).execute()
+        return {"success": True, "data": saved.data[0] if saved.data else None}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"تعذر ربط الشاهد: {e}")
+
+@router.get("/result/{result_id}")
+def get_result_evidence(result_id: str):
+    try:
+        links=supabase.table("evidence_links").select("evidence_id,link_note").eq("result_id",result_id).execute()
+        ids=[x["evidence_id"] for x in links.data]
+        if not ids: return {"success":True,"data":[]}
+        rows=supabase.table("evidence").select("id,title,description,original_file_name,mime_type,file_size,storage_path,created_at").in_("id",ids).execute()
+        return {"success":True,"data":rows.data}
+    except Exception as e: raise HTTPException(status_code=500, detail=f"تعذر جلب أدلة النتيجة: {e}")
+
+@router.get("/impact/{impact_id}")
+def get_impact_evidence(impact_id: str):
+    try:
+        links=supabase.table("evidence_links").select("evidence_id,link_note").eq("impact_measurement_id",impact_id).execute()
+        ids=[x["evidence_id"] for x in links.data]
+        if not ids: return {"success":True,"data":[]}
+        rows=supabase.table("evidence").select("id,title,description,original_file_name,mime_type,file_size,storage_path,created_at").in_("id",ids).execute()
+        return {"success":True,"data":rows.data}
+    except Exception as e: raise HTTPException(status_code=500, detail=f"تعذر جلب أدلة الأثر: {e}")

@@ -226,3 +226,20 @@ def get_impact_evidence(impact_id: str):
         rows=supabase.table("evidence").select("id,title,description,original_file_name,mime_type,file_size,storage_path,created_at").in_("id",ids).execute()
         return {"success":True,"data":rows.data}
     except Exception as e: raise HTTPException(status_code=500, detail=f"تعذر جلب أدلة الأثر: {e}")
+
+
+@router.get("/school/{school_id}/year/{academic_year_id}")
+def get_school_evidence(school_id: str, academic_year_id: str):
+    try:
+        ev = supabase.table("school_evaluations").select("id").eq("school_id", school_id).eq("academic_year_id", academic_year_id).eq("evaluation_type", "self").limit(1).execute()
+        if not ev.data:
+            return {"success": True, "data": []}
+        rows = supabase.table("evidence").select("id,title,description,original_file_name,mime_type,file_size,storage_path,created_at,school_evaluation_item_id").eq("school_evaluation_id", ev.data[0]["id"]).order("created_at", desc=True).execute()
+        data=[]
+        for row in rows.data:
+            signed=supabase.storage.from_(BUCKET).create_signed_url(row["storage_path"],3600)
+            row["signed_url"]=signed.get("signedURL") or signed.get("signed_url")
+            data.append(row)
+        return {"success":True,"data":data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"تعذر جلب مستودع الأدلة: {e}")

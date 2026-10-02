@@ -87,9 +87,17 @@ async def upload_evidence(
             )
             evaluation_item_row_id = created_item.data[0]["id"]
 
+        # استخدم اسمًا آمنًا ASCII للتخزين؛ نحفظ الاسم الأصلي في قاعدة البيانات
+        original_name = file.filename or "evidence"
+        ext = ""
+        if "." in original_name:
+            candidate_ext = original_name.rsplit(".", 1)[-1].lower()
+            if re.fullmatch(r"[a-z0-9]{1,10}", candidate_ext):
+                ext = "." + candidate_ext
+
         path = (
             f"{school_id}/{academic_year_id}/{evaluation_item_id}/"
-            f"{uuid.uuid4()}-{_safe_name(file.filename or 'evidence')}"
+            f"{uuid.uuid4().hex}{ext}"
         )
 
         supabase.storage.from_(BUCKET).upload(

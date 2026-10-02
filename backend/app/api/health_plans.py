@@ -177,11 +177,74 @@ def list_activities(plan_id: str):
         raise HTTPException(status_code=500, detail=f"حدث خطأ أثناء جلب الأنشطة: {str(e)}")
 
 
+class ActivityUpdateRequest(BaseModel):
+    objective_id: str | None = None
+    title: str | None = None
+    responsible_person: str | None = None
+    start_date: str | None = None
+    end_date: str | None = None
+    status: str | None = None
+    completion_percentage: int | None = None
+
+
+@router.put("/activities/{activity_id}")
+def update_activity(activity_id: str, payload: ActivityUpdateRequest):
+    try:
+        existing = (
+            supabase.table("activities")
+            .select("id,health_plan_id")
+            .eq("id", activity_id)
+            .limit(1)
+            .execute()
+        )
+        if not existing.data:
+            raise HTTPException(status_code=404, detail="النشاط غير موجود")
+
+        activity = existing.data[0]
+        if payload.objective_id:
+            objective = (
+                supabase.table("objectives")
+                .select("id,health_plan_id")
+                .eq("id", payload.objective_id)
+                .limit(1)
+                .execute()
+            )
+            if not objective.data or objective.data[0]["health_plan_id"] != activity["health_plan_id"]:
+                raise HTTPException(status_code=400, detail="الهدف التفصيلي المحدد لا ينتمي إلى هذه الخطة")
+
+        data = payload.model_dump(exclude_none=True)
+        row = supabase.table("activities").update(data).eq("id", activity_id).execute()
+        if not row.data:
+            raise RuntimeError("تعذر تحديث النشاط")
+        audit(
+            "update",
+            "activity",
+            activity_id,
+            details={"objective_id": payload.objective_id},
+        )
+        return {"success": True, "data": row.data[0]}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"تعذر تحديث النشاط: {e}")
+
+
 @router.post("/{plan_id}/activities")
 def create_activity(plan_id: str, payload: ActivityRequest):
     try:
         data = payload.model_dump(exclude_none=True)
         data["health_plan_id"] = plan_id
+
+        if not payload.objective_id:
+            objectives = (
+                supabase.table("objectives")
+                .select("id")
+                .eq("health_plan_id", plan_id)
+                .order("sort_order")
+                .execute()
+            )
+            if len(objectives.data or []) == 1:
+                data["objective_id"] = objectives.data[0]["id"]
 
         if payload.objective_id:
             objective = (

@@ -192,3 +192,77 @@ improvement_actions: قائمة من إجراءات قصيرة قابلة للت
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"تعذر إعداد التحليل الذكي للخطة: {e}")
 
+class InnovationAnalysisRequest(BaseModel):
+    innovation_id: str
+
+
+@router.post("/innovation-analysis")
+def innovation_analysis(payload: InnovationAnalysisRequest):
+    try:
+        import os
+        import json
+        from openai import OpenAI
+
+        innovation_rows = (
+            supabase.table("innovations")
+            .select("id,school_id,academic_year_id,problem_id,health_plan_id,title,idea,implementation,impact,scalability,sustainability,status")
+            .eq("id", payload.innovation_id)
+            .limit(1)
+            .execute()
+        ).data
+        if not innovation_rows:
+            raise HTTPException(status_code=404, detail="الفكرة الابتكارية غير موجودة")
+
+        innovation = innovation_rows[0]
+        problem = None
+        plan = None
+        if innovation.get("problem_id"):
+            rows = supabase.table("health_problems").select("title,description,priority_level,status").eq("id", innovation["problem_id"]).limit(1).execute()
+            problem = rows.data[0] if rows.data else None
+        if innovation.get("health_plan_id"):
+            rows = supabase.table("health_plans").select("title,main_goal,status").eq("id", innovation["health_plan_id"]).limit(1).execute()
+            plan = rows.data[0] if rows.data else None
+
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise HTTPException(status_code=500, detail="مفتاح OPENAI_API_KEY غير مضبوط في بيئة الخادم")
+        model = os.getenv("OPENAI_MODEL", "gpt-6-luna")
+        if model in {"gpt-5.6-mini", "gpt-5.6-mini-latest"}:
+            model = "gpt-6-luna"
+
+        client = OpenAI(api_key=api_key)
+        system_prompt = """
+أنت مساعد متخصص في تحليل الابتكار الصحي المدرسي.
+اعتمد فقط على الفكرة والبيانات المرتبطة بها.
+لا تخترع نتائج أو أرقامًا أو أدلة.
+لا تجعل التحليل بديلًا عن قرار فريق المدرسة.
+أخرج JSON صالحًا فقط بالمفاتيح:
+summary, impact, scalability, sustainability, actions
+وجميعها نصوص عربية واضحة، وactions قائمة قصيرة.
+إذا كانت المعلومات غير كافية، اذكر ذلك صراحة.
+""".strip()
+
+        input_data = {"innovation": innovation, "problem": problem, "plan": plan}
+        response = client.responses.create(
+            model=model,
+            input=[
+                {"role":"system","content":system_prompt},
+                {"role":"user","content":json.dumps(input_data, ensure_ascii=False)}
+            ],
+        )
+        raw = response.output_text
+        try:
+            analysis = json.loads(raw)
+        except json.JSONDecodeError:
+            analysis = {
+                "summary": raw,
+                "impact": "تحتاج الفكرة إلى مزيد من البيانات لتقييم الأثر.",
+                "scalability": "تحتاج إمكانات التوسع إلى معلومات إضافية.",
+                "sustainability": "تحتاج الاستدامة إلى تحديد الموارد وآلية الاستمرار.",
+                "actions": []
+            }
+        return {"success":True,"innovation_id":payload.innovation_id,"analysis":analysis}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"تعذر إعداد التحليل الذكي للابتكار: {e}")

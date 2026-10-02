@@ -23,6 +23,7 @@ def competition_view(school_id: str, academic_year_id: str):
             .limit(1)
             .execute()
         ).data
+
         evaluation = evaluation_rows[0] if evaluation_rows else {
             "id": None,
             "total_score": 0,
@@ -30,17 +31,17 @@ def competition_view(school_id: str, academic_year_id: str):
             "status": "غير مكتمل",
         }
 
-        official_items = supabase.table("evaluation_items").select("id").execute().data
-        total_evaluation_items = len(official_items)
+        total_evaluation_items = len(
+            supabase.table("evaluation_items").select("id").execute().data
+        )
 
-        evaluated_items = []
-        if evaluation.get("id"):
-            evaluated_items = (
-                supabase.table("school_evaluation_items")
-                .select("evaluation_item_id,score")
-                .eq("school_evaluation_id", evaluation["id"])
-                .execute()
-            ).data
+        evaluated_items = (
+            supabase.table("school_evaluation_items")
+            .select("evaluation_item_id,score")
+            .eq("school_evaluation_id", evaluation["id"])
+            .execute()
+        ).data if evaluation.get("id") else []
+
         evaluated_item_ids = {row["evaluation_item_id"] for row in evaluated_items}
         evaluation_completion = _pct(len(evaluated_item_ids), total_evaluation_items)
 
@@ -50,6 +51,7 @@ def competition_view(school_id: str, academic_year_id: str):
             .eq("school_evaluation_id", evaluation["id"])
             .execute().data
         ) if evaluation.get("id") else []
+
         evidence_item_ids = {
             row["school_evaluation_item_id"]
             for row in evidence_rows
@@ -74,6 +76,7 @@ def competition_view(school_id: str, academic_year_id: str):
         ).data
 
         plan_ids = [p["id"] for p in plans]
+
         objectives = (
             supabase.table("objectives")
             .select("id,health_plan_id")
@@ -88,20 +91,6 @@ def competition_view(school_id: str, academic_year_id: str):
             .execute()
         ).data if plan_ids else []
 
-        objective_plan_ids = {
-            o["health_plan_id"] for o in objectives if o.get("health_plan_id")
-        }
-        activity_plan_ids = {
-            a["health_plan_id"] for a in activities if a.get("health_plan_id")
-        }
-        structured_plan_ids = objective_plan_ids & activity_plan_ids
-        plan_completion = _pct(len(structured_plan_ids), len(plans))
-
-        execution = round(
-            sum(float(a.get("completion_percentage") or 0) for a in activities) / len(activities),
-            1,
-        ) if activities else 0
-
         activity_ids = [a["id"] for a in activities]
         activity_links = (
             supabase.table("evidence_links")
@@ -109,10 +98,71 @@ def competition_view(school_id: str, academic_year_id: str):
             .in_("activity_id", activity_ids)
             .execute()
         ).data if activity_ids else []
+
         documented_activity_ids = {
             x["activity_id"] for x in activity_links if x.get("activity_id")
         }
-        activity_documentation = _pct(len(documented_activity_ids), len(activity_ids))
+
+        objectives_by_plan = {}
+        for objective in objectives:
+            objectives_by_plan.setdefault(objective["health_plan_id"], 0)
+            objectives_by_plan[objective["health_plan_id"]] += 1
+
+        activities_by_plan = {}
+        for activity in activities:
+            activities_by_plan.setdefault(activity["health_plan_id"], []).append(activity)
+
+        plan_results = []
+        for plan in plans:
+            plan_activities = activities_by_plan.get(plan["id"], [])
+            objective_count = objectives_by_plan.get(plan["id"], 0)
+            activity_count = len(plan_activities)
+            documented_count = sum(
+                1 for a in plan_activities if a["id"] in documented_activity_ids
+            )
+            execution_score = (
+                round(
+                    sum(float(a.get("completion_percentage") or 0) for a in plan_activities)
+                    / activity_count,
+                    1,
+                )
+                if activity_count else 0
+            )
+            documentation_score = _pct(documented_count, activity_count)
+            objective_score = 100 if objective_count else 0
+            activity_score = 100 if activity_count else 0
+            completeness = round(
+                (objective_score + activity_score + execution_score + documentation_score) / 4,
+                1,
+            )
+
+            plan_results.append({
+                **plan,
+                "completion": completeness,
+                "objectives_count": objective_count,
+                "activities_count": activity_count,
+                "documented_activities": documented_count,
+                "execution": execution_score,
+                "documentation": documentation_score,
+            })
+
+        plan_completion = (
+            round(sum(p["completion"] for p in plan_results) / len(plan_results), 1)
+            if plan_results else 0
+        )
+
+        execution = (
+            round(
+                sum(float(a.get("completion_percentage") or 0) for a in activities)
+                / len(activities),
+                1,
+            )
+            if activities else 0
+        )
+
+        activity_documentation = _pct(
+            len(documented_activity_ids), len(activity_ids)
+        )
 
         innovations = (
             supabase.table("innovations")
@@ -139,7 +189,10 @@ def competition_view(school_id: str, academic_year_id: str):
         ).data
 
         innovation_partnership = round(
-            ((100 if innovations else 0) + (100 if (partnerships or twinning) else 0)) / 2,
+            (
+                (100 if innovations else 0)
+                + (100 if (partnerships or twinning) else 0)
+            ) / 2,
             1,
         )
 
@@ -185,13 +238,14 @@ def competition_view(school_id: str, academic_year_id: str):
                     "twinning": len(twinning),
                 },
                 "problems": problems,
-                "plans": plans,
+                "plans": plan_results,
                 "innovations": innovations,
                 "partnerships": partnerships,
                 "twinning": twinning,
                 "notes": [
                     "مؤشر الجاهزية في هذه الشاشة مؤشر داخلي لا يمثل الدرجة الرسمية للمسابقة.",
-                    "الدرجة الرسمية المعروضة منفصلة عن اكتمال الملف والشواهد.",
+                    "الدرجة الرسمية للتقييم منفصلة عن اكتمال الملف والشواهد والتنفيذ.",
+                    "اكتمال الخطة يعتمد على وجود أهداف وأنشطة وتنفيذ موثق، وليس على مجرد إنشاء الخطة.",
                     "لا يتم رفع الجاهزية بمجرد زيادة عدد الأنشطة؛ بل بحسب اكتمال عناصر الملف الموثقة في المنصة.",
                 ],
             },

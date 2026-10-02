@@ -330,3 +330,172 @@ summary, value, exchange, actions
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"تعذر إعداد التحليل الذكي للتوأمة: {e}")
+
+
+class CompetitionReadinessRequest(BaseModel):
+    school_id: str
+    academic_year_id: str
+
+
+@router.post("/competition-readiness")
+def competition_readiness(payload: CompetitionReadinessRequest):
+    try:
+        import json
+        import os
+        from openai import OpenAI
+
+        competition_rows = (
+            supabase.table("school_evaluations")
+            .select("id,total_score,percentage,status")
+            .eq("school_id", payload.school_id)
+            .eq("academic_year_id", payload.academic_year_id)
+            .eq("evaluation_type", "self")
+            .limit(1)
+            .execute()
+        ).data
+        evaluation = competition_rows[0] if competition_rows else {
+            "total_score": 0,
+            "percentage": 0,
+            "status": "غير مكتمل",
+        }
+
+        problems = (
+            supabase.table("health_problems")
+            .select("id,title,priority_level,status")
+            .eq("school_id", payload.school_id)
+            .eq("academic_year_id", payload.academic_year_id)
+            .execute()
+        ).data
+
+        plans = (
+            supabase.table("health_plans")
+            .select("id,title,status")
+            .eq("school_id", payload.school_id)
+            .eq("academic_year_id", payload.academic_year_id)
+            .execute()
+        ).data
+
+        plan_ids = [p["id"] for p in plans]
+        objectives = (
+            supabase.table("objectives")
+            .select("id,health_plan_id,title")
+            .in_("health_plan_id", plan_ids)
+            .execute()
+        ).data if plan_ids else []
+
+        activities = (
+            supabase.table("activities")
+            .select("id,health_plan_id,objective_id,title,status,completion_percentage")
+            .in_("health_plan_id", plan_ids)
+            .execute()
+        ).data if plan_ids else []
+
+        activity_ids = [a["id"] for a in activities]
+        evidence_links = (
+            supabase.table("evidence_links")
+            .select("activity_id,evidence_id")
+            .in_("activity_id", activity_ids)
+            .execute()
+        ).data if activity_ids else []
+
+        evidence = (
+            supabase.table("evidence")
+            .select("id,title,mime_type,created_at")
+            .in_("id", list(dict.fromkeys(x["evidence_id"] for x in evidence_links)))
+            .execute()
+        ).data if evidence_links else []
+
+        innovations = (
+            supabase.table("innovations")
+            .select("id,title,idea,status")
+            .eq("school_id", payload.school_id)
+            .eq("academic_year_id", payload.academic_year_id)
+            .execute()
+        ).data
+
+        partnerships = (
+            supabase.table("school_partners")
+            .select("id,objective,joint_activities,status,partners(name,partner_type)")
+            .eq("school_id", payload.school_id)
+            .eq("academic_year_id", payload.academic_year_id)
+            .execute()
+        ).data
+
+        twinning = (
+            supabase.table("school_twinning")
+            .select("id,partner_school_name,objective,activities,status")
+            .eq("school_id", payload.school_id)
+            .eq("academic_year_id", payload.academic_year_id)
+            .execute()
+        ).data
+
+        data = {
+            "evaluation": evaluation,
+            "problems": problems,
+            "plans": plans,
+            "objectives": objectives,
+            "activities": activities,
+            "evidence_links": evidence_links,
+            "evidence": evidence,
+            "innovations": innovations,
+            "partnerships": partnerships,
+            "twinning": twinning,
+        }
+
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise HTTPException(status_code=500, detail="مفتاح OPENAI_API_KEY غير مضبوط في بيئة الخادم")
+
+        model = os.getenv("OPENAI_MODEL", "gpt-6-luna")
+        if model in {"gpt-5.6-mini", "gpt-5.6-mini-latest"}:
+            model = "gpt-6-luna"
+
+        client = OpenAI(api_key=api_key)
+        system_prompt = """
+أنت مساعد تحليلي متخصص في قراءة جاهزية ملف المدرسة ضمن منصة «صِحّة».
+حلّل البيانات المرسلة فقط، ولا تخترع أي رقم أو نتيجة أو شاهد.
+لا تضع درجة جديدة للتقييم ولا تغيّر حكم الفريق.
+مؤشر الجاهزية الداخلي هو مؤشر اكتمال تشغيلي فقط وليس درجة للمسابقة.
+أخرج JSON صالحًا فقط بالمفاتيح:
+summary, strengths, gaps, evidence_gaps, plan_gaps, immediate_actions
+حيث:
+summary: فقرة عربية قصيرة تصف الحالة الحالية بدقة.
+strengths: قائمة قصيرة بنقاط قوة مثبتة بالبيانات.
+gaps: قائمة قصيرة بالفجوات الحالية.
+evidence_gaps: قائمة قصيرة توضّح نقص التوثيق أو الأدلة دون افتراض محتوى غير موجود.
+plan_gaps: قائمة قصيرة توضّح ما ينقص الخطط والأنشطة والتنفيذ.
+immediate_actions: قائمة قصيرة قابلة للتنفيذ خلال الفترة القادمة.
+اذكر بوضوح عندما تكون البيانات غير كافية للاستنتاج.
+استخدم لغة عربية رسمية واضحة، ولا تذكر أنك نموذج ذكاء اصطناعي.
+""".strip()
+
+        response = client.responses.create(
+            model=model,
+            input=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": json.dumps(data, ensure_ascii=False)},
+            ],
+        )
+
+        raw = response.output_text
+        try:
+            analysis = json.loads(raw)
+        except json.JSONDecodeError:
+            analysis = {
+                "summary": raw,
+                "strengths": [],
+                "gaps": [],
+                "evidence_gaps": [],
+                "plan_gaps": [],
+                "immediate_actions": [],
+            }
+
+        return {
+            "success": True,
+            "analysis": analysis,
+            "note": "التحليل مبني على البيانات المسجلة في المنصة فقط، ولا يستبدل حكم فريق المدرسة.",
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"تعذر تحليل جاهزية ملف المسابقة: {e}")

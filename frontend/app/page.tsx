@@ -86,6 +86,8 @@ export default function Home() {
   const [activityEvidence, setActivityEvidence] = useState<Record<string,any[]>>({});
   const [showDashboard, setShowDashboard] = useState(false);
   const [dashboard, setDashboard] = useState({ problems: 0, plans: 0, objectives: 0, activities: 0, evidence: 0, score: 0, percentage: 0, components: [] as any[] });
+  const [showReport, setShowReport] = useState(false);
+  const [report, setReport] = useState<any>(null);
   const SCHOOL_ID = "d088a83c-9619-4bc2-9c7e-02d9e5631617";
   const YEAR_ID = "49fbf490-53ec-4044-9b76-d856e9533ee8";
 
@@ -199,6 +201,13 @@ export default function Home() {
     if (!r.ok) { setError(json.detail || "تعذر حفظ النشاط"); return; }
     setActivityTitle(""); setActivityResponsible(""); setActivityStart(""); setActivityEnd("");
     await loadPlanDetails(selectedPlanId);
+  }
+
+  async function loadReport() {
+    const r=await fetch(API + "/api/reports/school/" + SCHOOL_ID + "/year/" + YEAR_ID);
+    const json=await r.json();
+    if (!r.ok) { setError(json.detail || "تعذر إعداد التقرير"); return; }
+    setReport(json);
   }
 
   async function loadDashboard() {
@@ -391,7 +400,8 @@ export default function Home() {
               <ToolbarButton icon={<BarChart3 size={17} />} text="تحليل النتائج" />
               <ToolbarButton icon={<Info size={17} />} text="معلومات المكون" />
               <ToolbarButton icon={<Search size={17} />} text="البحث" />
-              <button onClick={()=>{setShowDashboard(!showDashboard); if(!showDashboard) loadDashboard();}} className="flex items-center gap-2 rounded-xl border bg-white px-4 py-2 text-sm font-bold"><BarChart3 size={17}/> لوحة القيادة</button><button
+              <button onClick={()=>{setShowDashboard(!showDashboard); if(!showDashboard) loadDashboard();}} className="flex items-center gap-2 rounded-xl border bg-white px-4 py-2 text-sm font-bold"><BarChart3 size={17}/> لوحة القيادة</button>
+              <button onClick={()=>{setShowReport(!showReport); if(!showReport) loadReport();}} className="flex items-center gap-2 rounded-xl border bg-white px-4 py-2 text-sm font-bold"><ClipboardList size={17}/> التقارير</button><button
               onClick={() => { setShowPlans(!showPlans); if (!showPlans) loadPlans(); }}
               className="flex items-center gap-2 rounded-xl border bg-white px-4 py-2 text-sm font-bold"
             >
@@ -404,6 +414,19 @@ export default function Home() {
             </button>
             </div>
           </div>
+
+          {showReport && report && (
+            <div className="mb-4 rounded-2xl border bg-white p-5 shadow-sm">
+              <div className="flex items-center justify-between"><div><h3 className="text-lg font-extrabold">التقرير الذكي للمدرسة</h3><p className="text-xs text-slate-500">{report.school?.name} • {report.academic_year?.name}</p></div><button onClick={loadReport} className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white">تحديث</button></div>
+              <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+                {[["التقييم", (report.evaluation?.percentage??0)+"%"],["المشكلات",report.problems?.length??0],["الخطط",report.plans?.length??0],["الابتكارات",report.innovations?.length??0]].map(([l,v])=><div key={String(l)} className="rounded-xl bg-slate-50 p-4 text-center"><b className="text-xl text-blue-700">{v}</b><div className="text-xs text-slate-500">{l}</div></div>)}
+              </div>
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                <div className="rounded-xl border p-4"><b>المشكلات والخطط</b>{(report.plans??[]).map((p:any)=><div key={p.id} className="mt-2 text-sm">• {p.title} — {p.status}</div>)}</div>
+                <div className="rounded-xl border p-4"><b>الابتكار والشراكات</b>{(report.innovations??[]).map((i:any)=><div key={i.id} className="mt-2 text-sm">• {i.title} — {i.status}</div>)}{(report.twinning??[]).map((t:any)=><div key={t.id} className="mt-2 text-sm">• توأمة: {t.partner_school_name}</div>)}</div>
+              </div>
+            </div>
+          )}
 
           {showDashboard && (
             <div className="mb-4 rounded-2xl border bg-white p-5 shadow-sm">

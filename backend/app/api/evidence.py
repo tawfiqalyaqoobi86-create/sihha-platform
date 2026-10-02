@@ -147,3 +147,27 @@ def get_item_evidence(evaluation_item_id: str):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"حدث خطأ أثناء جلب الشواهد: {str(e)}")
+
+
+@router.get("/activity/{activity_id}")
+def get_activity_evidence(activity_id: str):
+    try:
+        links = (
+            supabase.table("evidence_links")
+            .select("evidence_id")
+            .eq("activity_id", activity_id)
+            .execute()
+        )
+        ids = [x["evidence_id"] for x in links.data]
+        if not ids:
+            return {"success": True, "data": []}
+        rows = (
+            supabase.table("evidence")
+            .select("id,title,description,original_file_name,mime_type,file_size,storage_path,created_at")
+            .in_("id", ids)
+            .order("created_at", desc=True)
+            .execute()
+        )
+        return {"success": True, "data": rows.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"حدث خطأ أثناء جلب أدلة النشاط: {str(e)}")

@@ -88,6 +88,7 @@ export default function Home() {
   const [activityStart, setActivityStart] = useState("");
   const [activityEnd, setActivityEnd] = useState("");
   const [activityObjectiveId, setActivityObjectiveId] = useState("");
+  const [selectedObjectiveForActivity, setSelectedObjectiveForActivity] = useState("");
   const [activityComponents, setActivityComponents] = useState<Record<string,string[]>>({});
   const [openActivityComponents, setOpenActivityComponents] = useState<string | null>(null);
   const [openActivityEvidence, setOpenActivityEvidence] = useState<string | null>(null);
@@ -284,6 +285,7 @@ export default function Home() {
   useEffect(() => {
     if (objectives.length === 1) {
       setActivityObjectiveId(prev => prev || objectives[0].id);
+      setSelectedObjectiveForActivity(prev => prev || objectives[0].id);
     } else if (objectives.length !== 1 && !objectives.some((o:any)=>o.id === activityObjectiveId)) {
       setActivityObjectiveId("");
     }
@@ -333,7 +335,7 @@ export default function Home() {
 
   async function createActivity() {
     if (!selectedPlanId || !activityTitle.trim()) return;
-    const objectiveId = activityObjectiveId || (objectives.length === 1 ? objectives[0].id : "");
+    const objectiveId = selectedObjectiveForActivity || (objectives.length === 1 ? objectives[0].id : "");
     if (!objectiveId) {
       setError(objectives.length === 0 ? "أضف هدفًا تفصيليًا أولًا ثم اربط النشاط به." : "اختر الهدف التفصيلي الذي يرتبط به النشاط.");
       return;
@@ -364,6 +366,7 @@ export default function Home() {
       setActivityStart("");
       setActivityEnd("");
       setActivityObjectiveId("");
+      setSelectedObjectiveForActivity(objectiveId);
       await loadPlanDetails(selectedPlanId);
       setSaveMessage("تم إضافة النشاط بنجاح");
       setTimeout(() => setSaveMessage(""), 2500);
@@ -846,37 +849,50 @@ export default function Home() {
                   </div>
 
                   <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <div className="mb-3 flex items-center justify-between gap-3">
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                       <div>
-                        <h5 className="font-extrabold text-slate-800">الأهداف التفصيلية</h5>
-                        <p className="mt-1 text-xs text-slate-500">أضف الأهداف هنا، ثم اربط كل نشاط بالهدف المناسب.</p>
+                        <h5 className="font-extrabold text-slate-800">1. الأهداف التفصيلية</h5>
+                        <p className="mt-1 text-xs text-slate-500">أضف الهدف أولًا، ثم اختر الهدف المراد تنفيذ الأنشطة المرتبطة به.</p>
                       </div>
                       <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600 ring-1 ring-slate-200">{objectives.length} هدف</span>
                     </div>
                     <div className="flex gap-2">
                       <input value={objectiveTitle} onChange={e=>setObjectiveTitle(e.target.value)} placeholder="الهدف التفصيلي" className="min-w-0 flex-1 rounded-xl border bg-white px-3 py-2" />
-                      <button onClick={createObjective} className="rounded-xl bg-emerald-600 px-4 font-bold text-white">إضافة</button>
+                      <button onClick={createObjective} className="rounded-xl bg-emerald-600 px-4 font-bold text-white">إضافة الهدف</button>
+                    </div>
+                    <div className="mt-3 space-y-2">
+                      {objectives.map((o:any,i:number)=>(
+                        <button
+                          key={o.id}
+                          type="button"
+                          onClick={()=>setSelectedObjectiveForActivity(o.id)}
+                          className={`flex w-full items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-right transition ${selectedObjectiveForActivity===o.id ? "border-blue-300 bg-blue-50 ring-1 ring-blue-100" : "border-slate-200 bg-white hover:bg-slate-50"}`}
+                        >
+                          <span className="font-bold text-slate-800">{i+1}. {o.title}</span>
+                          <span className={`rounded-full px-3 py-1 text-[11px] font-bold ${selectedObjectiveForActivity===o.id ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-500"}`}>
+                            {selectedObjectiveForActivity===o.id ? "الهدف المحدد للنشاط" : "اختيار الهدف"}
+                          </span>
+                        </button>
+                      ))}
+                      {!objectives.length && <div className="rounded-xl border border-dashed border-slate-300 bg-white p-4 text-center text-xs text-slate-400">أضف هدفًا تفصيليًا أولًا.</div>}
                     </div>
                   </div>
 
                   <div className="mb-4 rounded-2xl border border-blue-100 bg-blue-50/50 p-4">
-                    <div className="mb-3 flex items-center gap-2 font-bold text-blue-900">
-                      <Plus size={17} />
-                      إضافة نشاط جديد
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <h5 className="font-extrabold text-blue-900">2. إضافة الأنشطة والفعاليات</h5>
+                        <p className="mt-1 text-xs text-slate-500">الأنشطة التالية ستُحفظ تحت الهدف المحدد أعلاه.</p>
+                      </div>
+                      <div className="rounded-full bg-white px-3 py-1 text-xs font-bold text-blue-700 ring-1 ring-blue-100">
+                        الهدف الحالي: {objectives.find((o:any)=>o.id===selectedObjectiveForActivity)?.title || "لم يتم اختيار هدف"}
+                      </div>
                     </div>
-                    <div className="grid gap-2 lg:grid-cols-[1.2fr_1.1fr_1fr_1fr_115px]">
-                      <select
-                        value={activityObjectiveId}
-                        onChange={e=>setActivityObjectiveId(e.target.value)}
-                        className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 outline-none focus:border-blue-500"
-                      >
-                        <option value="">الهدف التفصيلي</option>
-                        {objectives.map((o:any)=><option key={o.id} value={o.id}>{o.title}</option>)}
-                      </select>
+                    <div className="grid gap-2 lg:grid-cols-[1.1fr_1fr_1fr_1fr_115px]">
                       <input
                         value={activityTitle}
                         onChange={e=>setActivityTitle(e.target.value)}
-                        placeholder="اسم النشاط"
+                        placeholder="اسم النشاط / الفعالية"
                         className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 outline-none focus:border-blue-500"
                       />
                       <input
@@ -885,10 +901,8 @@ export default function Home() {
                         placeholder="المنفذون"
                         className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 outline-none focus:border-blue-500"
                       />
-                      <div className="grid grid-cols-2 gap-2">
-                        <input type="date" aria-label="تاريخ التنفيذ" title="تاريخ التنفيذ" value={activityStart} onChange={e=>setActivityStart(e.target.value)} className="min-w-0 rounded-xl border border-slate-200 bg-white px-2 py-2.5" />
-                        <input type="date" aria-label="تاريخ الانتهاء" title="تاريخ الانتهاء" value={activityEnd} onChange={e=>setActivityEnd(e.target.value)} className="min-w-0 rounded-xl border border-slate-200 bg-white px-2 py-2.5" />
-                      </div>
+                      <input type="date" aria-label="تاريخ التنفيذ" title="تاريخ التنفيذ" value={activityStart} onChange={e=>setActivityStart(e.target.value)} className="min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2.5" />
+                      <input type="date" aria-label="تاريخ الانتهاء" title="تاريخ الانتهاء" value={activityEnd} onChange={e=>setActivityEnd(e.target.value)} className="min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2.5" />
                       <button onClick={createActivity} className="rounded-xl bg-blue-600 px-4 py-2.5 font-bold text-white shadow-sm hover:bg-blue-700">
                         إضافة
                       </button>

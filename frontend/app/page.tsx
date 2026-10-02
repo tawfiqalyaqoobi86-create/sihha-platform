@@ -89,6 +89,8 @@ export default function Home() {
   const [showReport, setShowReport] = useState(false);
   const [report, setReport] = useState<any>(null);
   const [showCompetition, setShowCompetition] = useState(false);
+  const [showEvidenceHub, setShowEvidenceHub] = useState(false);
+  const [allEvidence, setAllEvidence] = useState<any[]>([]);
   const [competition, setCompetition] = useState<any>(null);
   const SCHOOL_ID = "d088a83c-9619-4bc2-9c7e-02d9e5631617";
   const YEAR_ID = "49fbf490-53ec-4044-9b76-d856e9533ee8";
@@ -203,6 +205,13 @@ export default function Home() {
     if (!r.ok) { setError(json.detail || "تعذر حفظ النشاط"); return; }
     setActivityTitle(""); setActivityResponsible(""); setActivityStart(""); setActivityEnd("");
     await loadPlanDetails(selectedPlanId);
+  }
+
+  async function loadEvidenceHub() {
+    const r=await fetch(API + "/api/evidence/school/" + SCHOOL_ID + "/year/" + YEAR_ID);
+    const json=await r.json();
+    if (!r.ok) { setError(json.detail || "تعذر تحميل مستودع الأدلة"); return; }
+    setAllEvidence(json.data ?? []);
   }
 
   async function loadCompetition() {
@@ -411,7 +420,8 @@ export default function Home() {
               <ToolbarButton icon={<Search size={17} />} text="البحث" />
               <button onClick={()=>{setShowDashboard(!showDashboard); if(!showDashboard) loadDashboard();}} className="flex items-center gap-2 rounded-xl border bg-white px-4 py-2 text-sm font-bold"><BarChart3 size={17}/> لوحة القيادة</button>
               <button onClick={()=>{setShowReport(!showReport); if(!showReport) loadReport();}} className="flex items-center gap-2 rounded-xl border bg-white px-4 py-2 text-sm font-bold"><ClipboardList size={17}/> التقارير</button>
-              <button onClick={()=>{setShowCompetition(!showCompetition); if(!showCompetition) loadCompetition();}} className="flex items-center gap-2 rounded-xl border bg-white px-4 py-2 text-sm font-bold"><ShieldCheck size={17}/> وضع المسابقة</button><button
+              <button onClick={()=>{setShowCompetition(!showCompetition); if(!showCompetition) loadCompetition();}} className="flex items-center gap-2 rounded-xl border bg-white px-4 py-2 text-sm font-bold"><ShieldCheck size={17}/> وضع المسابقة</button>
+              <button onClick={()=>{setShowEvidenceHub(!showEvidenceHub); if(!showEvidenceHub) loadEvidenceHub();}} className="flex items-center gap-2 rounded-xl border bg-white px-4 py-2 text-sm font-bold"><FileUp size={17}/> الأدلة</button><button
               onClick={() => { setShowPlans(!showPlans); if (!showPlans) loadPlans(); }}
               className="flex items-center gap-2 rounded-xl border bg-white px-4 py-2 text-sm font-bold"
             >
@@ -424,6 +434,20 @@ export default function Home() {
             </button>
             </div>
           </div>
+
+          {showEvidenceHub && (
+            <div className="mb-4 rounded-2xl border bg-white p-5 shadow-sm">
+              <div className="mb-4 flex items-center justify-between"><div><h3 className="text-lg font-extrabold">مستودع الأدلة والشواهد</h3><p className="text-xs text-slate-500">جميع الشواهد المرفوعة في مكان واحد.</p></div><button onClick={loadEvidenceHub} className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white">تحديث</button></div>
+              <div className="mb-3 rounded-xl bg-slate-50 p-3 text-sm font-bold">إجمالي الشواهد: {allEvidence.length}</div>
+              <div className="grid gap-2">
+                {allEvidence.map((ev:any)=><div key={ev.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3">
+                  <div><div className="font-bold">{ev.title}</div><div className="text-xs text-slate-500">{ev.original_file_name || "ملف"} • {ev.mime_type || "غير محدد"}</div></div>
+                  {ev.signed_url && <a href={ev.signed_url} target="_blank" rel="noreferrer" className="rounded-lg bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">فتح الشاهد</a>}
+                </div>)}
+                {!allEvidence.length && <div className="p-6 text-center text-sm text-slate-500">لا توجد شواهد مرفوعة بعد.</div>}
+              </div>
+            </div>
+          )}
 
           {showCompetition && competition && (
             <div className="mb-4 rounded-2xl border-2 border-blue-200 bg-gradient-to-l from-blue-50 to-white p-5 shadow-sm">
@@ -674,6 +698,7 @@ export default function Home() {
             <button onClick={()=>{setShowProblems(true);loadProblems();}} className="rounded-xl bg-amber-50 p-2 text-xs font-bold text-amber-700">المشكلات</button>
             <button onClick={()=>{setShowPlans(true);loadPlans();}} className="rounded-xl bg-violet-50 p-2 text-xs font-bold text-violet-700">الخطط</button>
             <button onClick={()=>{setShowCompetition(true);loadCompetition();}} className="col-span-2 rounded-xl bg-blue-600 p-2 text-xs font-bold text-white">وضع المسابقة</button>
+            <button onClick={()=>{setShowEvidenceHub(true);loadEvidenceHub();}} className="col-span-2 rounded-xl bg-slate-800 p-2 text-xs font-bold text-white">مستودع الأدلة</button>
           </div>
           <h3 className="px-2 py-3 text-lg font-extrabold">المكونات الرئيسية (7)</h3>
           <div className="space-y-2">

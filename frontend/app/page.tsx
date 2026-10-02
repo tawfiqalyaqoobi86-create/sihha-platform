@@ -82,6 +82,8 @@ export default function Home() {
   const [activityResponsible, setActivityResponsible] = useState("");
   const [activityStart, setActivityStart] = useState("");
   const [activityEnd, setActivityEnd] = useState("");
+  const [activityComponents, setActivityComponents] = useState<Record<string,string[]>>({});
+  const [activityEvidence, setActivityEvidence] = useState<Record<string,any[]>>({});
   const SCHOOL_ID = "d088a83c-9619-4bc2-9c7e-02d9e5631617";
   const YEAR_ID = "49fbf490-53ec-4044-9b76-d856e9533ee8";
 
@@ -139,6 +141,20 @@ export default function Home() {
     : 0;
 
   const overallMax = totalMax || 341;
+
+  async function linkActivityComponents(activityId: string, componentIds: string[]) {
+    await fetch(`${API}/api/health-plans/activities/${activityId}/components`, {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({component_ids:componentIds})
+    });
+    setActivityComponents(v=>({...v,[activityId]:componentIds}));
+  }
+
+  async function loadActivityEvidence(activityId: string) {
+    const r=await fetch(`${API}/api/evidence/activity/${activityId}`);
+    const json=await r.json();
+    setActivityEvidence(v=>({...v,[activityId]:json.data??[]}));
+  }
 
   async function loadPlanDetails(planId: string) {
     setSelectedPlanId(planId);
@@ -418,7 +434,20 @@ export default function Home() {
                       <button onClick={createActivity} className="rounded-xl bg-blue-600 px-4 py-2 font-bold text-white">إضافة النشاط</button>
                     </div>
                     <div className="mt-3 space-y-2">
-                      {activities.map(a=><div key={a.id} className="flex items-center justify-between rounded-xl bg-slate-50 p-3 text-sm"><b>{a.title}</b><span className="text-xs text-slate-500">{a.responsible_person || "غير محدد"} • {a.completion_percentage}%</span></div>)}
+                      {activities.map(a=><div key={a.id} className="rounded-xl bg-slate-50 p-3 text-sm">
+                        <div className="flex items-center justify-between"><b>{a.title}</b><span className="text-xs text-slate-500">{a.responsible_person || "غير محدد"} • {a.completion_percentage}%</span></div>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {components.map(c=><label key={c.id} className="flex items-center gap-1 text-xs">
+                            <input type="checkbox" checked={(activityComponents[a.id]||[]).includes(c.id)} onChange={e=>{
+                              const ids=new Set(activityComponents[a.id]||[]);
+                              e.target.checked?ids.add(c.id):ids.delete(c.id);
+                              linkActivityComponents(a.id,[...ids]);
+                            }}/>{c.name}
+                          </label>)}
+                        </div>
+                        <button onClick={()=>loadActivityEvidence(a.id)} className="mt-2 text-xs font-bold text-blue-700">عرض الأدلة المرتبطة</button>
+                        {(activityEvidence[a.id]||[]).map(ev=><div key={ev.id} className="mt-1 text-xs text-emerald-700">✓ {ev.title}</div>)}
+                      </div>)}
                     </div>
                   </div>
                 </div>

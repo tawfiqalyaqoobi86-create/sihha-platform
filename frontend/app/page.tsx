@@ -74,6 +74,14 @@ export default function Home() {
   const [planTitle, setPlanTitle] = useState("");
   const [planGoal, setPlanGoal] = useState("");
   const [selectedProblemId, setSelectedProblemId] = useState("");
+  const [selectedPlanId, setSelectedPlanId] = useState("");
+  const [objectives, setObjectives] = useState<any[]>([]);
+  const [activities, setActivities] = useState<any[]>([]);
+  const [objectiveTitle, setObjectiveTitle] = useState("");
+  const [activityTitle, setActivityTitle] = useState("");
+  const [activityResponsible, setActivityResponsible] = useState("");
+  const [activityStart, setActivityStart] = useState("");
+  const [activityEnd, setActivityEnd] = useState("");
   const SCHOOL_ID = "d088a83c-9619-4bc2-9c7e-02d9e5631617";
   const YEAR_ID = "49fbf490-53ec-4044-9b76-d856e9533ee8";
 
@@ -131,6 +139,49 @@ export default function Home() {
     : 0;
 
   const overallMax = totalMax || 341;
+
+  async function loadPlanDetails(planId: string) {
+    setSelectedPlanId(planId);
+    const [o, a] = await Promise.all([
+      fetch(`${API}/api/health-plans/${planId}/objectives`).then(r => r.json()),
+      fetch(`${API}/api/health-plans/${planId}/activities`).then(r => r.json()),
+    ]);
+    setObjectives(o.data ?? []);
+    setActivities(a.data ?? []);
+  }
+
+  async function createObjective() {
+    if (!selectedPlanId || !objectiveTitle.trim()) return;
+    const r = await fetch(`${API}/api/health-plans/${selectedPlanId}/objectives`, {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({health_plan_id:selectedPlanId,title:objectiveTitle}),
+    });
+    const json = await r.json();
+    if (!r.ok) { setError(json.detail || "تعذر حفظ الهدف"); return; }
+    setObjectiveTitle("");
+    await loadPlanDetails(selectedPlanId);
+  }
+
+  async function createActivity() {
+    if (!selectedPlanId || !activityTitle.trim()) return;
+    const r = await fetch(`${API}/api/health-plans/${selectedPlanId}/activities`, {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({
+        health_plan_id:selectedPlanId,
+        title:activityTitle,
+        responsible_person:activityResponsible || null,
+        start_date:activityStart || null,
+        end_date:activityEnd || null,
+        status:"planned"
+      }),
+    });
+    const json = await r.json();
+    if (!r.ok) { setError(json.detail || "تعذر حفظ النشاط"); return; }
+    setActivityTitle(""); setActivityResponsible(""); setActivityStart(""); setActivityEnd("");
+    await loadPlanDetails(selectedPlanId);
+  }
 
   async function loadPlans() {
     const r = await fetch(`${API}/api/health-plans/school/${SCHOOL_ID}/year/${YEAR_ID}`);
@@ -337,12 +388,41 @@ export default function Home() {
               </div>
               <div className="mt-4 grid gap-2">
                 {plans.map(p=>(
-                  <div key={p.id} className="rounded-xl bg-slate-50 p-3">
+                  <button key={p.id} onClick={()=>loadPlanDetails(p.id)} className={`rounded-xl p-3 text-right ${selectedPlanId===p.id ? "bg-blue-50 border border-blue-300" : "bg-slate-50"}`}>
                     <div className="font-bold">{p.title}</div>
                     <div className="text-xs text-slate-500">{p.main_goal}</div>
-                  </div>
+                  </button>
                 ))}
               </div>
+              {selectedPlanId && (
+                <div className="mt-5 grid gap-5 lg:grid-cols-2">
+                  <div className="rounded-2xl border p-4">
+                    <h4 className="mb-3 font-extrabold">الأهداف التفصيلية</h4>
+                    <div className="flex gap-2">
+                      <input value={objectiveTitle} onChange={e=>setObjectiveTitle(e.target.value)} placeholder="الهدف التفصيلي" className="min-w-0 flex-1 rounded-xl border px-3 py-2" />
+                      <button onClick={createObjective} className="rounded-xl bg-emerald-600 px-4 font-bold text-white">إضافة</button>
+                    </div>
+                    <div className="mt-3 space-y-2">
+                      {objectives.map((o,i)=><div key={o.id} className="rounded-xl bg-slate-50 p-3 text-sm"><b>{i+1}. {o.title}</b></div>)}
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border p-4">
+                    <h4 className="mb-3 font-extrabold">الأنشطة التنفيذية</h4>
+                    <div className="grid gap-2">
+                      <input value={activityTitle} onChange={e=>setActivityTitle(e.target.value)} placeholder="اسم النشاط" className="rounded-xl border px-3 py-2" />
+                      <input value={activityResponsible} onChange={e=>setActivityResponsible(e.target.value)} placeholder="المسؤول عن التنفيذ" className="rounded-xl border px-3 py-2" />
+                      <div className="grid grid-cols-2 gap-2">
+                        <input type="date" value={activityStart} onChange={e=>setActivityStart(e.target.value)} className="rounded-xl border px-3 py-2" />
+                        <input type="date" value={activityEnd} onChange={e=>setActivityEnd(e.target.value)} className="rounded-xl border px-3 py-2" />
+                      </div>
+                      <button onClick={createActivity} className="rounded-xl bg-blue-600 px-4 py-2 font-bold text-white">إضافة النشاط</button>
+                    </div>
+                    <div className="mt-3 space-y-2">
+                      {activities.map(a=><div key={a.id} className="flex items-center justify-between rounded-xl bg-slate-50 p-3 text-sm"><b>{a.title}</b><span className="text-xs text-slate-500">{a.responsible_person || "غير محدد"} • {a.completion_percentage}%</span></div>)}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
           {showProblems && (

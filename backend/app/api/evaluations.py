@@ -185,3 +185,30 @@ def get_school_evaluation(school_id: str, academic_year_id: str):
             status_code=500,
             detail=f"حدث خطأ أثناء جلب التقييم: {str(e)}",
         )
+
+
+@router.get("/school/{school_id}/year/{academic_year_id}/summary")
+def get_evaluation_summary(school_id: str, academic_year_id: str):
+    try:
+        ev = supabase.table("school_evaluations").select("id,total_score,percentage,status").eq("school_id", school_id).eq("academic_year_id", academic_year_id).eq("evaluation_type", "self").limit(1).execute()
+        if not ev.data:
+            return {"success": True, "total_score": 0, "total_max": 0, "percentage": 0, "components": []}
+        evaluation_id = ev.data[0]["id"]
+        rows = supabase.table("school_evaluation_items").select("score,evaluation_items(max_score,indicator_id,indicators(component_id,components(id,code,name,official_total_score)))").eq("school_evaluation_id", evaluation_id).execute()
+        grouped = {}
+        for row in rows.data:
+            item = row.get("evaluation_items") or {}
+            ind = item.get("indicators") or {}
+            comp = ind.get("components") or {}
+            if not comp:
+                continue
+            g = grouped.setdefault(comp["id"], {"id": comp["id"], "code": comp["code"], "name": comp["name"], "score": 0, "max_score": 0, "official_total_score": comp.get("official_total_score") or 0})
+            g["score"] += float(row.get("score") or 0)
+            g["max_score"] += float(item.get("max_score") or 0)
+        components = []
+        for g in grouped.values():
+            g["percentage"] = round(g["score"] / g["max_score"] * 100, 2) if g["max_score"] else 0
+            components.append(g)
+        return {"success": True, **ev.data[0], "components": components}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"تعذر حساب ملخص التقييم: {e}")

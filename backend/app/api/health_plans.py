@@ -92,6 +92,47 @@ def create_plan(payload: PlanRequest):
         raise HTTPException(status_code=500, detail=f"حدث خطأ أثناء حفظ الخطة: {str(e)}")
 
 
+
+@router.delete("/{plan_id}")
+def delete_plan(plan_id: str):
+    try:
+        existing = (
+            supabase.table("health_plans")
+            .select("id,school_id,problem_id,title")
+            .eq("id", plan_id)
+            .limit(1)
+            .execute()
+        )
+        if not existing.data:
+            raise HTTPException(status_code=404, detail="الخطة الصحية غير موجودة")
+
+        plan = existing.data[0]
+        supabase.table("health_plans").delete().eq("id", plan_id).execute()
+
+        remaining = (
+            supabase.table("health_plans")
+            .select("id")
+            .eq("problem_id", plan["problem_id"])
+            .limit(1)
+            .execute()
+        )
+        if not remaining.data:
+            supabase.table("health_problems").update({"status": "prioritized"}).eq("id", plan["problem_id"]).execute()
+
+        audit(
+            "delete",
+            "health_plan",
+            plan_id,
+            plan["school_id"],
+            details={"title": plan["title"], "problem_id": plan["problem_id"]},
+        )
+        return {"success": True, "message": "تم حذف الخطة الصحية بنجاح"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"حدث خطأ أثناء حذف الخطة: {str(e)}")
+
+
 @router.get("/{plan_id}/objectives")
 def list_objectives(plan_id: str):
     try:

@@ -998,3 +998,380 @@ WHERE c.code='5' AND e.code='5.4'
 INSERT INTO evaluation_items (indicator_id, code, title, description, max_score, sort_order)
 SELECT i.id, '5.5', 'وجود دعم من المجتمع الخارجي والمؤسسات الحكومية', 'درجة البند وفق استمارة تقييم المكون.', 7, 5
 FROM indicators i
+JOIN components c ON c.id = i.component_id
+WHERE c.code = '5' AND i.code = 'OFFICIAL-EVALUATION'
+  AND NOT EXISTS (
+    SELECT 1 FROM evaluation_items e
+    WHERE e.indicator_id = i.id AND e.code = '5.5'
+  );
+
+
+INSERT INTO evaluation_sources (evaluation_item_id, title, description)
+SELECT e.id, 'توثيق', 'مصدر التقييم كما ورد في استمارة المكون.'
+FROM evaluation_items e
+JOIN indicators i ON i.id=e.indicator_id
+JOIN components c ON c.id=i.component_id
+WHERE c.code='5' AND e.code='5.5'
+  AND NOT EXISTS (
+    SELECT 1 FROM evaluation_sources s WHERE s.evaluation_item_id=e.id AND s.title='توثيق'
+  );
+
+
+INSERT INTO evaluation_items (indicator_id, code, title, description, max_score, sort_order)
+SELECT i.id, '5.6', 'وجود أنشطة اجتماعية وترفيهية للطلبة والعاملين بالمدرسة', 'درجة البند وفق استمارة تقييم المكون.', 9, 6
+FROM indicators i
+JOIN components c ON c.id = i.component_id
+WHERE c.code = '5' AND i.code = 'OFFICIAL-EVALUATION'
+  AND NOT EXISTS (
+    SELECT 1 FROM evaluation_items e
+    WHERE e.indicator_id = i.id AND e.code = '5.6'
+  );
+
+
+INSERT INTO evaluation_sources (evaluation_item_id, title, description)
+SELECT e.id, 'سجلات ومقابلات', 'مصدر التقييم كما ورد في استمارة المكون.'
+FROM evaluation_items e
+JOIN indicators i ON i.id=e.indicator_id
+JOIN components c ON c.id=i.component_id
+WHERE c.code='5' AND e.code='5.6'
+  AND NOT EXISTS (
+    SELECT 1 FROM evaluation_sources s WHERE s.evaluation_item_id=e.id AND s.title='سجلات ومقابلات'
+  );
+
+
+INSERT INTO evaluation_items (indicator_id, code, title, description, max_score, sort_order)
+SELECT i.id, '6.1', 'تطبيق الاشتراطات الصحية للجمعيات التعاونية والمقاصف المدرسية', 'درجة البند وفق استمارة تقييم المكون.', 12, 1
+FROM indicators i
+JOIN components c ON c.id = i.component_id
+WHERE c.code = '6' AND i.code = 'OFFICIAL-EVALUATION'
+  AND NOT EXISTS (
+    SELECT 1 FROM evaluation_items e
+    WHERE e.indicator_id = i.id AND e.code = '6.1'
+  );
+
+
+INSERT INTO evaluation_sources (evaluation_item_id, title, description)
+SELECT e.id, 'سجلات ومعاينة؛ استمارة متابعة', 'مصدر التقييم كما ورد في استمارة المكون.'
+FROM evaluation_items e
+JOIN indicators i ON i.id=e.indicator_id
+JOIN components c ON c.id=i.component_id
+WHERE c.code='6' AND e.code='6.1'
+  AND NOT EXISTS (
+    SELECT 1 FROM evaluation_sources s WHERE s.evaluation_item_id=e.id AND s.title='سجلات ومعاينة؛ استمارة متابعة'
+  );
+
+
+INSERT INTO evaluation_items (indicator_id, code, title, description, max_score, sort_order)
+SELECT i.id, '6.2', 'تحديد المشكلات الغذائية بين الطلبة بناء على نتائج التقييم التغذوي', 'درجة البند وفق استمارة تقييم المكون.', 5, 2
+FROM indicators i
+JOIN components c ON c.id = i.component_id
+WHERE c.code = '6' AND i.code = 'OFFICIAL-EVALUATION'
+  AND NOT EXISTS (
+    SELECT 1 FROM evaluation_items e
+    WHERE e.indicator_id = i.id AND e.code = '6.2'
+  );
+
+
+INSERT INTO evaluation_sources (evaluation_item_id, title, description)
+SELECT e.id, 'نتائج استبيان التقييم التغذوي؛ سجل المترددين؛ الفحص الشامل', 'مصدر التقييم كما ورد في استمارة المكون.'
+FROM evaluation_items e
+JOIN indicators i ON i.id=e.indicator_id
+JOIN components c ON c.id=i.component_id
+WHERE c.code='6' AND e.code='6.2'
+  AND NOT EXISTS (
+    SELECT 1 FROM evaluation_sources s WHERE s.evaluation_item_id=e.id AND s.title='نتائج استبيان التقييم التغذوي؛ سجل المترددين؛ الفحص الشامل'
+  );
+
+
+INSERT INTO evaluation_items (indicator_id, code, title, description, max_score, sort_order)
+SELECT i.id, '6.3', 'وجود متابعة للطلبة ذوي المشكلات الغذائية', 'درجة البند وفق استمارة تقييم المكون.', 5, 3
+FROM indicators i
+JOIN components c ON c.id = i.component_id
+WHERE c.code = '6' AND i.code = 'OFFICIAL-EVALUATION'
+  AND NOT EXISTS (
+    SELECT 1 FROM evaluation_items e
+    WHERE e.indicator_id = i.id AND e.code = '6.3'
+  );
+
+
+INSERT INTO evaluation_sources (evaluation_item_id, title, description)
+SELECT e.id, 'توثيق وسجلات', 'مصدر التقييم كما ورد في استمارة المكون.'
+FROM evaluation_items e
+JOIN indicators i ON i.id=e.indicator_id
+JOIN components c ON c.id=i.component_id
+WHERE c.code='6' AND e.code='6.3'
+  AND NOT EXISTS (
+    SELECT 1 FROM evaluation_sources s WHERE s.evaluation_item_id=e.id AND s.title='توثيق وسجلات'
+  );
+
+
+INSERT INTO evaluation_items (indicator_id, code, title, description, max_score, sort_order)
+SELECT i.id, '6.4', 'وجود برامج وفعاليات تغذوية داعمة لحل مشكلات التغذية بالمدرسة', 'درجة البند وفق استمارة تقييم المكون.', 10, 4
+FROM indicators i
+JOIN components c ON c.id = i.component_id
+WHERE c.code = '6' AND i.code = 'OFFICIAL-EVALUATION'
+  AND NOT EXISTS (
+    SELECT 1 FROM evaluation_items e
+    WHERE e.indicator_id = i.id AND e.code = '6.4'
+  );
+
+
+INSERT INTO evaluation_sources (evaluation_item_id, title, description)
+SELECT e.id, 'سجلات ومعاينة', 'مصدر التقييم كما ورد في استمارة المكون.'
+FROM evaluation_items e
+JOIN indicators i ON i.id=e.indicator_id
+JOIN components c ON c.id=i.component_id
+WHERE c.code='6' AND e.code='6.4'
+  AND NOT EXISTS (
+    SELECT 1 FROM evaluation_sources s WHERE s.evaluation_item_id=e.id AND s.title='سجلات ومعاينة'
+  );
+
+
+INSERT INTO evaluation_items (indicator_id, code, title, description, max_score, sort_order)
+SELECT i.id, '6.5', 'وجود أنشطة توعوية في التغذية وسلامة الغذاء للطلبة والمعلمين والعاملين', 'درجة البند وفق استمارة تقييم المكون.', 5, 5
+FROM indicators i
+JOIN components c ON c.id = i.component_id
+WHERE c.code = '6' AND i.code = 'OFFICIAL-EVALUATION'
+  AND NOT EXISTS (
+    SELECT 1 FROM evaluation_items e
+    WHERE e.indicator_id = i.id AND e.code = '6.5'
+  );
+
+
+INSERT INTO evaluation_sources (evaluation_item_id, title, description)
+SELECT e.id, 'سجلات ومقابلة', 'مصدر التقييم كما ورد في استمارة المكون.'
+FROM evaluation_items e
+JOIN indicators i ON i.id=e.indicator_id
+JOIN components c ON c.id=i.component_id
+WHERE c.code='6' AND e.code='6.5'
+  AND NOT EXISTS (
+    SELECT 1 FROM evaluation_sources s WHERE s.evaluation_item_id=e.id AND s.title='سجلات ومقابلة'
+  );
+
+
+INSERT INTO evaluation_items (indicator_id, code, title, description, max_score, sort_order)
+SELECT i.id, '6.6', 'يمارس الطلبة سلوكا غذائيا صحيا كنمط حياة', 'درجة البند وفق استمارة تقييم المكون.', 5, 6
+FROM indicators i
+JOIN components c ON c.id = i.component_id
+WHERE c.code = '6' AND i.code = 'OFFICIAL-EVALUATION'
+  AND NOT EXISTS (
+    SELECT 1 FROM evaluation_items e
+    WHERE e.indicator_id = i.id AND e.code = '6.6'
+  );
+
+
+INSERT INTO evaluation_sources (evaluation_item_id, title, description)
+SELECT e.id, 'مقابلة عينة عشوائية من الطلبة', 'مصدر التقييم كما ورد في استمارة المكون.'
+FROM evaluation_items e
+JOIN indicators i ON i.id=e.indicator_id
+JOIN components c ON c.id=i.component_id
+WHERE c.code='6' AND e.code='6.6'
+  AND NOT EXISTS (
+    SELECT 1 FROM evaluation_sources s WHERE s.evaluation_item_id=e.id AND s.title='مقابلة عينة عشوائية من الطلبة'
+  );
+
+
+INSERT INTO evaluation_items (indicator_id, code, title, description, max_score, sort_order)
+SELECT i.id, '6.7', 'وجود أنشطة موجهة لأولياء الأمور والمجتمع المحلي تتعلق بالتغذية وسلامة الغذاء', 'درجة البند وفق استمارة تقييم المكون.', 5, 7
+FROM indicators i
+JOIN components c ON c.id = i.component_id
+WHERE c.code = '6' AND i.code = 'OFFICIAL-EVALUATION'
+  AND NOT EXISTS (
+    SELECT 1 FROM evaluation_items e
+    WHERE e.indicator_id = i.id AND e.code = '6.7'
+  );
+
+
+INSERT INTO evaluation_sources (evaluation_item_id, title, description)
+SELECT e.id, 'سجلات ومقابلة', 'مصدر التقييم كما ورد في استمارة المكون.'
+FROM evaluation_items e
+JOIN indicators i ON i.id=e.indicator_id
+JOIN components c ON c.id=i.component_id
+WHERE c.code='6' AND e.code='6.7'
+  AND NOT EXISTS (
+    SELECT 1 FROM evaluation_sources s WHERE s.evaluation_item_id=e.id AND s.title='سجلات ومقابلة'
+  );
+
+
+INSERT INTO evaluation_items (indicator_id, code, title, description, max_score, sort_order)
+SELECT i.id, '6.8', 'وجود مشاركة مجتمعية لدعم التغذية الصحية بالمدرسة', 'درجة البند وفق استمارة تقييم المكون.', 5, 8
+FROM indicators i
+JOIN components c ON c.id = i.component_id
+WHERE c.code = '6' AND i.code = 'OFFICIAL-EVALUATION'
+  AND NOT EXISTS (
+    SELECT 1 FROM evaluation_items e
+    WHERE e.indicator_id = i.id AND e.code = '6.8'
+  );
+
+
+INSERT INTO evaluation_sources (evaluation_item_id, title, description)
+SELECT e.id, 'توثيق المشاركة', 'مصدر التقييم كما ورد في استمارة المكون.'
+FROM evaluation_items e
+JOIN indicators i ON i.id=e.indicator_id
+JOIN components c ON c.id=i.component_id
+WHERE c.code='6' AND e.code='6.8'
+  AND NOT EXISTS (
+    SELECT 1 FROM evaluation_sources s WHERE s.evaluation_item_id=e.id AND s.title='توثيق المشاركة'
+  );
+
+
+INSERT INTO evaluation_items (indicator_id, code, title, description, max_score, sort_order)
+SELECT i.id, '7.1', 'تفعيل مشاركة الطالب والمعلمين في الأنشطة البدنية', 'درجة البند وفق استمارة تقييم المكون.', 5, 1
+FROM indicators i
+JOIN components c ON c.id = i.component_id
+WHERE c.code = '7' AND i.code = 'OFFICIAL-EVALUATION'
+  AND NOT EXISTS (
+    SELECT 1 FROM evaluation_items e
+    WHERE e.indicator_id = i.id AND e.code = '7.1'
+  );
+
+
+INSERT INTO evaluation_sources (evaluation_item_id, title, description)
+SELECT e.id, 'سجلات؛ مقابلات؛ توثيق', 'مصدر التقييم كما ورد في استمارة المكون.'
+FROM evaluation_items e
+JOIN indicators i ON i.id=e.indicator_id
+JOIN components c ON c.id=i.component_id
+WHERE c.code='7' AND e.code='7.1'
+  AND NOT EXISTS (
+    SELECT 1 FROM evaluation_sources s WHERE s.evaluation_item_id=e.id AND s.title='سجلات؛ مقابلات؛ توثيق'
+  );
+
+
+INSERT INTO evaluation_items (indicator_id, code, title, description, max_score, sort_order)
+SELECT i.id, '7.2', 'وجود برامج منتظمة للأنشطة البدنية للطلبة وذوي الاحتياجات الخاصة', 'درجة البند وفق استمارة تقييم المكون.', 5, 2
+FROM indicators i
+JOIN components c ON c.id = i.component_id
+WHERE c.code = '7' AND i.code = 'OFFICIAL-EVALUATION'
+  AND NOT EXISTS (
+    SELECT 1 FROM evaluation_items e
+    WHERE e.indicator_id = i.id AND e.code = '7.2'
+  );
+
+
+INSERT INTO evaluation_sources (evaluation_item_id, title, description)
+SELECT e.id, 'سجلات ومقابلات', 'مصدر التقييم كما ورد في استمارة المكون.'
+FROM evaluation_items e
+JOIN indicators i ON i.id=e.indicator_id
+JOIN components c ON c.id=i.component_id
+WHERE c.code='7' AND e.code='7.2'
+  AND NOT EXISTS (
+    SELECT 1 FROM evaluation_sources s WHERE s.evaluation_item_id=e.id AND s.title='سجلات ومقابلات'
+  );
+
+
+INSERT INTO evaluation_items (indicator_id, code, title, description, max_score, sort_order)
+SELECT i.id, '7.3', 'تحقيق مبدأ السلامة والأمن الرياضي', 'درجة البند وفق استمارة تقييم المكون.', 5, 3
+FROM indicators i
+JOIN components c ON c.id = i.component_id
+WHERE c.code = '7' AND i.code = 'OFFICIAL-EVALUATION'
+  AND NOT EXISTS (
+    SELECT 1 FROM evaluation_items e
+    WHERE e.indicator_id = i.id AND e.code = '7.3'
+  );
+
+
+INSERT INTO evaluation_sources (evaluation_item_id, title, description)
+SELECT e.id, 'معاينة؛ سجل', 'مصدر التقييم كما ورد في استمارة المكون.'
+FROM evaluation_items e
+JOIN indicators i ON i.id=e.indicator_id
+JOIN components c ON c.id=i.component_id
+WHERE c.code='7' AND e.code='7.3'
+  AND NOT EXISTS (
+    SELECT 1 FROM evaluation_sources s WHERE s.evaluation_item_id=e.id AND s.title='معاينة؛ سجل'
+  );
+
+
+INSERT INTO evaluation_items (indicator_id, code, title, description, max_score, sort_order)
+SELECT i.id, '7.4', 'وجود ملاعب مختلفة مهيأة ومجهزة للأنشطة الرياضية المختلفة', 'درجة البند وفق استمارة تقييم المكون.', 5, 4
+FROM indicators i
+JOIN components c ON c.id = i.component_id
+WHERE c.code = '7' AND i.code = 'OFFICIAL-EVALUATION'
+  AND NOT EXISTS (
+    SELECT 1 FROM evaluation_items e
+    WHERE e.indicator_id = i.id AND e.code = '7.4'
+  );
+
+
+INSERT INTO evaluation_sources (evaluation_item_id, title, description)
+SELECT e.id, 'معاينة', 'مصدر التقييم كما ورد في استمارة المكون.'
+FROM evaluation_items e
+JOIN indicators i ON i.id=e.indicator_id
+JOIN components c ON c.id=i.component_id
+WHERE c.code='7' AND e.code='7.4'
+  AND NOT EXISTS (
+    SELECT 1 FROM evaluation_sources s WHERE s.evaluation_item_id=e.id AND s.title='معاينة'
+  );
+
+
+INSERT INTO evaluation_items (indicator_id, code, title, description, max_score, sort_order)
+SELECT i.id, '7.5', 'وجود برامج نشاط بدني يستهدف الإداريين والمعلمين والعاملين', 'درجة البند وفق استمارة تقييم المكون.', 5, 5
+FROM indicators i
+JOIN components c ON c.id = i.component_id
+WHERE c.code = '7' AND i.code = 'OFFICIAL-EVALUATION'
+  AND NOT EXISTS (
+    SELECT 1 FROM evaluation_items e
+    WHERE e.indicator_id = i.id AND e.code = '7.5'
+  );
+
+
+INSERT INTO evaluation_sources (evaluation_item_id, title, description)
+SELECT e.id, 'سجلات ومقابلات', 'مصدر التقييم كما ورد في استمارة المكون.'
+FROM evaluation_items e
+JOIN indicators i ON i.id=e.indicator_id
+JOIN components c ON c.id=i.component_id
+WHERE c.code='7' AND e.code='7.5'
+  AND NOT EXISTS (
+    SELECT 1 FROM evaluation_sources s WHERE s.evaluation_item_id=e.id AND s.title='سجلات ومقابلات'
+  );
+
+
+INSERT INTO evaluation_items (indicator_id, code, title, description, max_score, sort_order)
+SELECT i.id, '7.6', 'وجود برامج نشاط بدني وترفيهي لأفراد المجتمع سواء داخل المدرسة أو خارجها', 'درجة البند وفق استمارة تقييم المكون.', 5, 6
+FROM indicators i
+JOIN components c ON c.id = i.component_id
+WHERE c.code = '7' AND i.code = 'OFFICIAL-EVALUATION'
+  AND NOT EXISTS (
+    SELECT 1 FROM evaluation_items e
+    WHERE e.indicator_id = i.id AND e.code = '7.6'
+  );
+
+
+INSERT INTO evaluation_sources (evaluation_item_id, title, description)
+SELECT e.id, 'سجلات ومقابلات', 'مصدر التقييم كما ورد في استمارة المكون.'
+FROM evaluation_items e
+JOIN indicators i ON i.id=e.indicator_id
+JOIN components c ON c.id=i.component_id
+WHERE c.code='7' AND e.code='7.6'
+  AND NOT EXISTS (
+    SELECT 1 FROM evaluation_sources s WHERE s.evaluation_item_id=e.id AND s.title='سجلات ومقابلات'
+  );
+
+
+INSERT INTO evaluation_items (indicator_id, code, title, description, max_score, sort_order)
+SELECT i.id, '7.7', 'يمارس الطلبة النشاط البدني كنمط حياة', 'درجة البند وفق استمارة تقييم المكون.', 5, 7
+FROM indicators i
+JOIN components c ON c.id = i.component_id
+WHERE c.code = '7' AND i.code = 'OFFICIAL-EVALUATION'
+  AND NOT EXISTS (
+    SELECT 1 FROM evaluation_items e
+    WHERE e.indicator_id = i.id AND e.code = '7.7'
+  );
+
+
+INSERT INTO evaluation_sources (evaluation_item_id, title, description)
+SELECT e.id, 'مقابلة عينة عشوائية من الطلاب', 'مصدر التقييم كما ورد في استمارة المكون.'
+FROM evaluation_items e
+JOIN indicators i ON i.id=e.indicator_id
+JOIN components c ON c.id=i.component_id
+WHERE c.code='7' AND e.code='7.7'
+  AND NOT EXISTS (
+    SELECT 1 FROM evaluation_sources s WHERE s.evaluation_item_id=e.id AND s.title='مقابلة عينة عشوائية من الطلاب'
+  );
+
+
+-- ملاحظة توثيقية:
+-- مجموع درجات بنود المكون الأول كما تظهر في النص المستخرج = 62،
+-- بينما الدليل يذكر إجمالي درجات التقييم = 60. لم نغيّر أيا من النصوص.
+-- يجب حسم هذه الملاحظة مع النسخة الرسمية/فريق التقييم قبل اعتماد الحساب الآلي.
+
+COMMIT;

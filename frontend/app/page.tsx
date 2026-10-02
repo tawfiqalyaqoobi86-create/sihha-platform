@@ -898,7 +898,7 @@ export default function Home() {
             <button onClick={()=>{setShowDashboard(true);loadDashboard();}} className="rounded-xl bg-blue-50 p-2 text-xs font-bold text-blue-700">الرئيسية</button>
             <button onClick={()=>{setShowReport(true);loadReport();}} className="rounded-xl bg-emerald-50 p-2 text-xs font-bold text-emerald-700">التقارير</button>
             <button onClick={()=>{setShowProblems(true);loadProblems();}} className="rounded-xl bg-amber-50 p-2 text-xs font-bold text-amber-700">المشكلات</button>
-            <button onClick={()=>{setShowPlans(true);loadPlans();}} className="rounded-xl bg-violet-50 p-2 text-xs font-bold text-violet-700">الخطط</button>
+            <button onClick={()=>{setShowPlans(true);loadPlans();loadProblems();}} className="rounded-xl bg-violet-50 p-2 text-xs font-bold text-violet-700">الخطط</button>
             <button onClick={()=>{setShowCompetition(true);loadCompetition();}} className="col-span-2 rounded-xl bg-blue-600 p-2 text-xs font-bold text-white">وضع المسابقة</button>
             <button onClick={()=>{setShowEvidenceHub(true);loadEvidenceHub();}} className="col-span-2 rounded-xl bg-slate-800 p-2 text-xs font-bold text-white">مستودع الأدلة</button>
           </div>

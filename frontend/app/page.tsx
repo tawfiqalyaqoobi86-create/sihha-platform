@@ -133,6 +133,7 @@ export default function Home() {
   const [competition, setCompetition] = useState<any>(null);
   const [competitionAI, setCompetitionAI] = useState<any>(null);
   const [analyzingCompetition, setAnalyzingCompetition] = useState(false);
+  const [authContext, setAuthContext] = useState<any>({can_manage:false, role_names:[]});
   const SCHOOL_ID = "d088a83c-9619-4bc2-9c7e-02d9e5631617";
   const YEAR_ID = "49fbf490-53ec-4044-9b76-d856e9533ee3";
 
@@ -152,6 +153,7 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    loadAuthContext().catch(() => {});
     loadProblems().catch(() => {});
     loadPlans().catch(() => {});
     fetch(`${API}/api/evaluations/school/${SCHOOL_ID}/year/${YEAR_ID}`)
@@ -452,6 +454,17 @@ export default function Home() {
     const json=await r.json();
     if (!r.ok) { setError(json.detail || "تعذر تحميل وضع المسابقة"); return; }
     setCompetition(json.competition);
+  }
+
+  async function loadAuthContext() {
+    try {
+      const r = await fetch(API + "/api/auth/context?school_id=" + SCHOOL_ID);
+      const json = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(json.detail || "تعذر تحميل صلاحيات المستخدم");
+      setAuthContext(json);
+    } catch (e) {
+      setAuthContext({can_manage:false, role_names:[]});
+    }
   }
 
   async function analyzeCompetitionReadiness() {
@@ -961,7 +974,7 @@ export default function Home() {
           <div className="flex items-center gap-4">
             <div className="text-left">
               <div className="font-bold">توفيق اليعقوبي</div>
-              <div className="text-xs text-slate-500">مدير المدرسة • 2026 / 2027</div>
+              <div className="text-xs text-slate-500">{authContext.role_names?.[0] || "عضو الفريق"} • 2026 / 2027</div>
             </div>
             <Menu className="text-slate-500" />
           </div>
@@ -1276,12 +1289,12 @@ export default function Home() {
                         <div className="font-bold">{p.title}</div>
                         <div className="text-xs text-slate-500">{p.main_goal}</div>
                       </button>
-                      <button
+                      {authContext.can_manage && <button
                         onClick={()=>deletePlan(p.id,p.title)}
                         className="shrink-0 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-700 hover:bg-red-100"
                       >
                         حذف
-                      </button>
+                      </button>}
                     </div>
                   </div>
                 ))}
@@ -1762,7 +1775,7 @@ export default function Home() {
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex min-w-0 items-center gap-3">
                         <div className="min-w-0"><div className="font-bold">{p.title}</div><div className="text-xs text-slate-500">{p.description || "لا يوجد وصف"}</div></div>
-                        <button onClick={()=>deleteProblem(p.id, p.title)} className="shrink-0 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-700 hover:bg-red-100">حذف</button>
+                        {authContext.can_manage && <button onClick={()=>deleteProblem(p.id, p.title)} className="shrink-0 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-700 hover:bg-red-100">حذف</button>}
                       </div>
                       <span className={`rounded-full px-3 py-1 text-xs font-bold ${p.priority_level === "high" ? "bg-red-50 text-red-700" : p.priority_level === "low" ? "bg-slate-100 text-slate-700" : "bg-amber-50 text-amber-700"}`}>
                         {p.priority_level === "high" ? "أولوية عالية" : p.priority_level === "low" ? "أولوية منخفضة" : "أولوية متوسطة"}

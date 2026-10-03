@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from backend.app.core.supabase import supabase
 from backend.app.services.audit import audit
+from backend.app.api.auth import Identity, ensure_school_access, require_roles
 
 router = APIRouter(prefix="/api/health-plans", tags=["Health Plans"])
 
@@ -94,7 +95,10 @@ def create_plan(payload: PlanRequest):
 
 
 @router.delete("/{plan_id}")
-def delete_plan(plan_id: str):
+def delete_plan(
+    plan_id: str,
+    identity: Identity = Depends(require_roles("school_manager", "system_admin")),
+):
     try:
         existing = (
             supabase.table("health_plans")
@@ -107,6 +111,11 @@ def delete_plan(plan_id: str):
             raise HTTPException(status_code=404, detail="الخطة الصحية غير موجودة")
 
         plan = existing.data[0]
+        ensure_school_access(
+            identity,
+            plan["school_id"],
+            ("school_manager", "system_admin"),
+        )
         supabase.table("health_plans").delete().eq("id", plan_id).execute()
 
         remaining = (

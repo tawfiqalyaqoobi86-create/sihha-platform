@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from backend.app.core.supabase import supabase
 from backend.app.services.audit import audit
+from backend.app.api.auth import Identity, ensure_school_access, require_roles
 
 router = APIRouter(prefix="/api/health-problems", tags=["Health Problems"])
 
@@ -80,7 +81,10 @@ def create_problem(payload: ProblemRequest):
 
 
 @router.delete("/{problem_id}")
-def delete_problem(problem_id: str):
+def delete_problem(
+    problem_id: str,
+    identity: Identity = Depends(require_roles("school_manager", "system_admin")),
+):
     try:
         existing = (
             supabase.table("health_problems")
@@ -91,6 +95,12 @@ def delete_problem(problem_id: str):
         )
         if not existing.data:
             raise HTTPException(status_code=404, detail="المشكلة الصحية غير موجودة")
+
+        ensure_school_access(
+            identity,
+            existing.data[0]["school_id"],
+            ("school_manager", "system_admin"),
+        )
 
         supabase.table("problem_priorities").delete().eq("problem_id", problem_id).execute()
         row = supabase.table("health_problems").delete().eq("id", problem_id).execute()

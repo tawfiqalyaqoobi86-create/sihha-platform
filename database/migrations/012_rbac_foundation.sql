@@ -1,6 +1,6 @@
 -- 012_rbac_foundation.sql
 -- منصة صِحّة | أساس الأدوار والصلاحيات
--- لا يفرض تسجيل الدخول على النسخة المحلية الحالية؛ مرحلة ربط Supabase Auth تأتي لاحقًا.
+-- متوافق مع جدول roles الموجود حاليًا، ولا يحذف أي بيانات سابقة.
 
 BEGIN;
 
@@ -12,13 +12,35 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     updated_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS public.roles (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    code text NOT NULL UNIQUE,
-    name text NOT NULL,
-    description text,
-    created_at timestamptz NOT NULL DEFAULT now()
-);
+ALTER TABLE public.roles
+    ADD COLUMN IF NOT EXISTS code text;
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_roles_code
+    ON public.roles(code)
+    WHERE code IS NOT NULL;
+
+UPDATE public.roles
+SET code = 'system_admin'
+WHERE code IS NULL AND name = 'مدير النظام';
+
+UPDATE public.roles
+SET code = 'school_manager'
+WHERE code IS NULL AND name = 'مدير المدرسة';
+
+UPDATE public.roles
+SET code = 'team_member'
+WHERE code IS NULL AND name = 'عضو فريق التقويم';
+
+UPDATE public.roles
+SET code = 'viewer'
+WHERE code IS NULL AND name = 'مستخدم عرض';
+
+INSERT INTO public.roles (code, name, description) VALUES
+    ('system_admin', 'مدير النظام', 'صلاحيات إدارية على مستوى المنصة.'),
+    ('school_manager', 'مدير المدرسة', 'إدارة المدرسة والسجلات الرئيسية والصلاحيات التنفيذية.'),
+    ('team_member', 'عضو فريق التقويم', 'العمل في التقييم والخطط والأنشطة والشواهد.'),
+    ('viewer', 'مستخدم عرض', 'قراءة التقارير ولوحات المتابعة دون تعديل.')
+ON CONFLICT (code) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS public.user_roles (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -29,13 +51,6 @@ CREATE TABLE IF NOT EXISTS public.user_roles (
     created_at timestamptz NOT NULL DEFAULT now(),
     UNIQUE(profile_id, role_id, school_id, academic_year_id)
 );
-
-INSERT INTO public.roles (code, name, description) VALUES
-    ('system_admin', 'مدير النظام', 'صلاحيات إدارية على مستوى المنصة.'),
-    ('school_manager', 'مدير المدرسة', 'إدارة المدرسة والسجلات الرئيسية والصلاحيات التنفيذية.'),
-    ('team_member', 'عضو فريق التقويم', 'العمل في التقييم والخطط والأنشطة والشواهد.'),
-    ('viewer', 'مستخدم عرض', 'قراءة التقارير ولوحات المتابعة دون تعديل.')
-ON CONFLICT (code) DO NOTHING;
 
 CREATE INDEX IF NOT EXISTS idx_user_roles_profile
     ON public.user_roles(profile_id);
